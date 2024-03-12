@@ -10,22 +10,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.2/proj4.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/shpjs@3"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/dist/turf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mapbox/leaflet-pip@1.1.0/leaflet-pip.min.js"></script>
+
 
 
 </head>
 <body>
 
-    <div id="map" style="width: 75%; height: 100vh; float: left;"></div>
-    <div id ="infoContainer">
-    <div id="info" style="width: 25%; height: 100vh; float: right; overflow: auto;"></div>
-    <div id="typeFilterContainer" style="position: absolute; top: 10px; right: 10px; z-index: 1000; background: white; padding: 5px; border-radius: 5px;">
+    
+
+    <div id="info" style="height: 100vh; float: right; overflow: auto;"></div>
+    <div id="typeFilterContainer">
+        <h2>Cliquer sur une région pour filtrer la liste</h2>
         <select id="typeFilter" style="padding: 5px; border: 1px solid #ccc;">
             <option value="Tous">Tous</option>
             <!-- Les options seront ajoutées dynamiquement -->
         </select>
+        <button onclick="resetRegionFilter()">Réinitialiser</button>
         <div id="nombreElements"></div>
     </div>
-    </div>
+    <div id="map" style="height: 100vh; float: left;"></div>
 
 
     
@@ -37,6 +41,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         crossorigin=""></script>
-<script src="script.js"></script>
+<script src="script1.js"></script>
 </body>
 </html>

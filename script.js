@@ -38,17 +38,31 @@ function chargerCSV(urlCSV) {
 function filterMapByType(selectedType) {
     // Efface tous les marqueurs actuellement présents sur la carte
     map.eachLayer(function(layer) {
-        // Vérifiez si la couche est un marqueur (ou un cercle, dans votre cas) et supprimez-le
-        // Vous pouvez ajouter d'autres conditions ici pour filtrer seulement certains marqueurs
         if (layer instanceof L.CircleMarker) {
             map.removeLayer(layer);
         }
     });
-    
-    
+
     // Filtrer les données Google Sheets selon le type sélectionné
     const filteredRows = rowsGSheet.filter(row => row[indices.indexType] === selectedType || selectedType === "Tous");
-    
+
+    // Effacer le contenu actuel de l'élément qui affiche le tableau
+    document.getElementById('info').innerHTML = '';
+
+    // Construire le nouveau contenu HTML pour le tableau basé sur les données filtrées
+    let htmlContent = `<h4>Résultats filtrés:</h4><table><tr><th>Entreprise</th><th>Type</th><th>Date</th></tr>`;
+    filteredRows.forEach(row => {
+        const associatedCompany = row[indices.indexAssociatedCompany];
+        const nomType = row[indices.indexNomType];
+        const date = row[indices.indexDate];
+        htmlContent += `<tr><td>${associatedCompany}</td><td>${nomType}</td><td>${date}</td></tr>`;
+    });
+    htmlContent += `</table>`;
+
+    // Mettre à jour l'élément HTML avec le nouveau contenu du tableau
+    document.getElementById('info').innerHTML = htmlContent;
+
+
     // Itérer sur les données filtrées et ajouter les marqueurs à la carte
     filteredRows.forEach(rowGSheet => {
         const codeInseeGSheet = rowGSheet[indices.indexCodeInsee].toString().trim();
@@ -64,7 +78,7 @@ function filterMapByType(selectedType) {
                 fillColor: couleur || 'grey',
                 fillOpacity: 1,
                 radius: 5
-            }).addTo(map) // Assurez-vous d'ajouter les marqueurs au groupe
+            }).addTo(map)
             .bindTooltip(`<strong>${associatedCompany}</strong><br>${nomType}<br>${date}`, { 
                 permanent: false, 
                 direction: 'auto'
@@ -72,6 +86,7 @@ function filterMapByType(selectedType) {
         }
     });
 }
+
 
 
 
@@ -144,18 +159,18 @@ document.addEventListener("DOMContentLoaded", () => {
                       color: "#00753B", // Couleur des contours
                       weight: 1, // Épaisseur des contours initiale
                       fillColor: "grey", // Couleur de remplissage
-                      fillOpacity: 0.00 // Presque transparent
+                      fillOpacity: 0.01 // Presque transparent
                   };
               },
               onEachFeature: function(feature, layer) {
                   layer.on('click', function(e) {
                       // Trouver les points correspondant au nom de la région cliquée
                       var nomRegion = feature.properties.nom;
-                      console.log('nomregion :',nomRegion);
+                    //   console.log('nomregion :',nomRegion);
                       var pointsDansRegion = rowsGSheet.filter(row => row[indices.indexRegion] === nomRegion);
-                      console.log('points :',pointsDansRegion);
+                    //   console.log('points :',pointsDansRegion);
 
-                      document.getElementById('nombreElements').innerHTML = `Nombre d'éléments dans le tableau : ${pointsDansRegion.length}`;
+                      document.getElementById('nombreElements').innerHTML = `${nomRegion} : ${pointsDansRegion.length} références`;
                       
                       // Construire le tableau HTML avec les informations des points
                       var html = `<h4>Points dans ${nomRegion}:</h4><table><tr><th>Entreprise</th><th>Type</th><th>Date</th></tr>`;
@@ -173,7 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
                               weight: 3, // Augmente la largeur lors du survol
                               fillColor: '#00753B',
                               color: '#00753B',
-                              fillOpacity: 0 // Rend le remplissage légèrement plus visible lors du survol
+                              fillOpacity: 0.01 // Rend le remplissage légèrement plus visible lors du survol
                           });
                       },
                       mouseout: function(e) {
