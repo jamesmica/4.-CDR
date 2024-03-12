@@ -18,6 +18,24 @@ var dataCSV; // Données du fichier CSV
 var selectedType = "Tous"; // Type sélectionné, "Tous" par défaut
 var selectedRegion = null; // Région sélectionnée, null si aucune
 document.addEventListener("DOMContentLoaded", () => {
+
+    document.getElementById('toggleInfoBtn').addEventListener('click', function() {
+        var infoDiv = document.getElementById('info');
+        // Si la div est actuellement ouverte (vérification basique avec max-height), la fermer. Sinon, l'ouvrir.
+        if (infoDiv.style.height !== "160px") {
+            infoDiv.style.height = "160px"; // Ferme la div
+            infoDiv.style.overflow = "hidden";
+        } else {
+            // Ouvrir la div en ajustant le max-height à la hauteur du contenu ou à une valeur suffisamment grande
+            // Pour une ouverture complète, vous pouvez temporairement changer max-height à 'none' pour calculer la hauteur du contenu
+            infoDiv.style.height = "100vh";
+            infoDiv.style.height = "100vh";
+            infoDiv.style.overflow = "auto";
+            setTimeout(function() {
+            }, 10); // Petite temporisation pour la transition
+        }
+    });
+    
     init(); // Initialisation et chargement des données
     
     map.on("click", function (event) {
