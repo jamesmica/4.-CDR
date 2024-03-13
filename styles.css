@@ -107,5 +107,5 @@ button#toggleInfoBtn {
 
 .leaflet-tile-pane {
     -webkit-filter: opacity(80%) grayscale(100%);
-     filter: opacity(80%) grayscale(100%);
-  }
+    filter: opacity(40%) grayscale(100%);
+}
