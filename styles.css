@@ -6,6 +6,7 @@
 }
 
 body {
+    font-family: calibri, Arial, Roboto;
     margin: 0;
 }
 
@@ -57,4 +58,49 @@ h2 {
     background: white;
     transition: .5s height ease;
     opacity: 0.9;
+}
+
+button#resetRegionBtn {
+    background: #96bf9a;
+    border: none;
+    padding: 8px;
+    color: white;
+    transition: .3s all;
+    cursor: pointer;
+}
+
+button#resetRegionBtn:hover {
+    background: white;
+    border: none;
+    padding: 8px;
+    color: #96bf9a;
+    transition: .3s all;
+    cursor: pointer;
+    outline: 1px solid #96bf9a;
+}
+
+button#toggleInfoBtn:hover {
+    background: white;
+    border: none;
+    padding: 8px;
+    color: #00753B;
+    transition: .3s all;
+    cursor: pointer;
+    outline: 1px solid #00753B;
+}
+
+div#nombreElements {
+    max-width: 120px;
+}
+
+button#toggleInfoBtn {
+    background: #00753B;
+    border: none;
+    padding: 8px;
+    color: white;
+    transition: .3s all;
+    cursor: pointer;
+    right: 48px;
+    position: inherit;
+    top: 80px;
 }

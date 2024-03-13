@@ -21,16 +21,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById('toggleInfoBtn').addEventListener('click', function() {
         var infoDiv = document.getElementById('info');
+        var toggleInfoBtn = document.getElementById('toggleInfoBtn');
         // Si la div est actuellement ouverte (vérification basique avec max-height), la fermer. Sinon, l'ouvrir.
         if (infoDiv.style.height !== "160px") {
             infoDiv.style.height = "160px"; // Ferme la div
             infoDiv.style.overflow = "hidden";
+            toggleInfoBtn.innerHTML = 'Afficher la liste ⯆';
         } else {
             // Ouvrir la div en ajustant le max-height à la hauteur du contenu ou à une valeur suffisamment grande
             // Pour une ouverture complète, vous pouvez temporairement changer max-height à 'none' pour calculer la hauteur du contenu
             infoDiv.style.height = "100vh";
             infoDiv.style.height = "100vh";
             infoDiv.style.overflow = "auto";
+            toggleInfoBtn.innerHTML = 'Masquer la liste ⯅';
             setTimeout(function() {
             }, 10); // Petite temporisation pour la transition
         }
@@ -214,10 +217,14 @@ function applyFilters() {
         return matchesType && matchesRegion;
     });
 
-    if (selectedRegion) {
-        document.getElementById('nombreElements').innerHTML = `Nombre de références dans la région ${selectedRegion} : ${filteredRows.length}`;
-    } else {
-        document.getElementById('nombreElements').innerHTML = `Nombre de références en France : ${filteredRows.length}`;
+    if (selectedRegion && selectedType != "Tous") {
+        document.getElementById('nombreElements').innerHTML = `${selectedRegion} > ${selectedType}<br> ${filteredRows.length} références`;
+    } else if (selectedType === "Tous" && !selectedRegion) {
+        document.getElementById('nombreElements').innerHTML = `France<br>${filteredRows.length} références`;
+    } else if (selectedType === "Tous" && selectedRegion) {
+        document.getElementById('nombreElements').innerHTML = `${selectedRegion}<br> ${filteredRows.length} références`;
+    } else if (selectedType !== "Tous" && !selectedRegion) {
+        document.getElementById('nombreElements').innerHTML = `France > ${selectedType}<br> ${filteredRows.length} références`;
     }
 
 
