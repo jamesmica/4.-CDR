@@ -104,3 +104,8 @@ button#toggleInfoBtn {
     position: inherit;
     top: 80px;
 }
+
+.leaflet-tile-pane {
+    -webkit-filter: opacity(80%) grayscale(100%);
+     filter: opacity(80%) grayscale(100%);
+  }
