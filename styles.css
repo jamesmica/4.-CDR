@@ -131,7 +131,11 @@ div#filter {
     flex-direction: column;
 }
 
-
+hr {
+    width: 240px;
+    color: white;
+    font-size: 31px;
+}
 
 th {
     text-align: left;
@@ -166,11 +170,13 @@ table {
 }
 
 button#resetRegionBtn {
+    border-radius: 4px;
     background: #96bf9a;
     border: none;
     padding: 8px;
     color: white;
     cursor: pointer;
+    outline: 2px solid white;
 }
 
 button#resetRegionBtn:hover {
