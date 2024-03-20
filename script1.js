@@ -1,9 +1,9 @@
 const apiKey = 'AIzaSyC2YFqXtmJh4c4jYPwGvPmWnU1iEhGWj0E';
 const sheetId = '1FUhix1FToy_joK8lZuiZvZp6aCeQncByDaFVfPGKU1k';
-const range = 'Feuille 1!A1:I1224';
+const range = 'Feuille 1!A1:J1500';
 const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
 const urlCSV = 'centroides_total.csv';
-var previousSelectedLayer = null; // Conservera une référence à la dernière région sélectionnée
+var previousSelectedLayer = null; // Conserve une référence à la dernière région sélectionnée
 var geojsonLayer; 
 var correspondance;
 
@@ -24,50 +24,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById('toggleInfoBtn').addEventListener('click', function() {
         var infoDiv = document.getElementById('typeFilterContainer');
-        var toggleInfoBtn = document.getElementById('toggleInfoBtn');
         
-        // Si la div est actuellement ouverte, la fermer.
         if (infoDiv.style.width !== "0px") {
-            infoDiv.style.width = "0px"; 
-            toggleInfoBtn.classList.remove('btn-arrow');
-            toggleInfoBtn.classList.add('btn-cross');
+            requestAnimationFrame(() => {
+                infoDiv.style.width = "0px";
+            });
+            toggleInfoBtn.classList.replace('btn-arrow', 'btn-cross');
         } else {
-            // Ouvrir la div en ajustant le height à la hauteur du contenu ou à une valeur suffisamment grande
-            infoDiv.style.width = "360px";
-            toggleInfoBtn.classList.remove('btn-cross');
-            toggleInfoBtn.classList.add('btn-arrow');
-            setTimeout(function() {
-                // Code pour la transition si nécessaire
-            }, 10); // Petite temporisation pour la transition
+            requestAnimationFrame(() => {
+                infoDiv.style.width = "360px";
+            });
+            toggleInfoBtn.classList.replace('btn-cross', 'btn-arrow');
         }
     });
     
-    // Initialisez le bouton avec la bonne classe au chargement de la page
     document.getElementById('toggleInfoBtn').classList.add('btn-arrow');
     
     
     init(); // Initialisation et chargement des données
+
 });
 
 map.on("click", function (event) {
-    // Utilisez leafletPip.pointInLayer pour trouver les couches sous le point cliqué
+
     var clickedLayers = leafletPip.pointInLayer(event.latlng, geojsonLayer, true);
 
-    // Vérifiez si des couches ont été trouvées
     if (clickedLayers.length > 0) {
-        // Ici, vous pouvez effectuer des actions spécifiques avec chaque couche trouvée
-
-        // Parcourir chaque couche trouvée. Exemple pour déclencher des actions sur la première couche seulement :
         var firstLayer = clickedLayers[0]; // Prendre la première couche trouvée
         
-        // Vérifiez si cette couche a un gestionnaire d'événements 'click' que vous souhaitez déclencher
         if (firstLayer && firstLayer.feature && firstLayer.fire) {
             firstLayer.fire('click', {
                 latlng: event.latlng,
                 layer: firstLayer
-            }); // Simuler un clic sur cette couche
-            
-            // Note: Assurez-vous que vos couches GeoJSON ont des gestionnaires d'événements 'click' attachés pour gérer cet événement simulé.
+            });
+
         }
     } else {
         console.log("Aucune couche trouvée sous le point cliqué.");
@@ -90,11 +80,12 @@ function init() {
                 indexRegion: header.indexOf('Region') 
             };
 
-            // Remplir le sélecteur de types
+            rowsGSheet.sort((a, b) => Number(b[indices.indexDate]) - Number(a[indices.indexDate]));
+
             const typeFilter = document.getElementById('typeFilter');
             const types = new Set(data.values.slice(1).map(row => row[indices.indexType]));
             types.forEach(type => {
-                if (type) { // Assurez-vous que le type n'est pas vide ou undefined
+                if (type) {
                     typeFilter.innerHTML += `<option value="${type}">${type}</option>`;
                 }
             });
@@ -103,11 +94,10 @@ function init() {
         })
         .then(dataCSVResult => {
             dataCSV = dataCSVResult;
-            applyFilters(); // Applique les filtres initiaux
+            applyFilters();
         })
         .catch(error => console.error('Erreur lors de la récupération des données :', error));
 
-    // Ajouter l'écouteur d'événements pour le filtre de type
     document.getElementById('typeFilter').addEventListener('change', function() {
         selectedType = this.value;
         applyFilters();
@@ -161,9 +151,6 @@ fetch('./regions-20180101.json')
     }).addTo(map);
 });
 
-
-
-    // Ici, ajoutez la logique pour charger la couche GeoJSON et définir les événements de clic sur les régions
 }
 
 function chargerCSV(urlCSV) {
