@@ -158,7 +158,7 @@ table {
     margin: auto !important;
     overflow: scroll !important;
     overflow-x: hidden !important;
-    height: calc(100vw - 652px);
+    height: calc(-255px + 100vh);
     transition: .5s height;
 
 }
