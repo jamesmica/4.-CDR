@@ -250,7 +250,7 @@ function applyFilters() {
 
     // Mettre à jour l'élément HTML avec les informations filtrées
     document.getElementById('info').innerHTML = infoHTML;
-    document.getElementById('info').style.height = "calc(100vw - 652px)"
+    document.getElementById('info').style.height = "calc(-255px + 100vh)"
 
     const filteredRowsByType = rowsGSheet.filter(row => selectedType === "Tous" || row[indices.indexType] === selectedType);
 
