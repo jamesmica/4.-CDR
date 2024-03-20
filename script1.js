@@ -204,7 +204,7 @@ function applyFilters() {
         }
     });
 
-
+    let pointsGroupedByLocation = {};
     // Filtrer les données Google Sheets selon les critères sélectionnés
     const filteredRows = rowsGSheet.filter(row => {
         const matchesType = selectedType === "Tous" || row[indices.indexType] === selectedType;
@@ -241,32 +241,54 @@ function applyFilters() {
 
     const filteredRowsByType = rowsGSheet.filter(row => selectedType === "Tous" || row[indices.indexType] === selectedType);
 
-    // Construire et afficher les marqueurs
-    filteredRowsByType.forEach(rowGSheet => {
-        const codeInseeGSheet = rowGSheet[indices.indexCodeInsee].toString().trim();
-        correspondance = dataCSV.find(rowCSV => rowCSV.INSEE === codeInseeGSheet);
+    filteredRowsByType.forEach(row => {
+        const codeInsee = row[indices.indexCodeInsee].toString().trim();
+        const correspondance = dataCSV.find(rowCSV => rowCSV.INSEE === codeInsee);
         if (correspondance) {
-            const isInSelectedRegion = selectedRegion ? rowGSheet[indices.indexRegion] === selectedRegion : true;
-            const opacity = isInSelectedRegion ? 1 : 0.5; // Opacité pleine pour les points dans la région sélectionnée, sinon réduite
-            const associatedCompany = rowGSheet[indices.indexAssociatedCompany];
-            const nomType = rowGSheet[indices.indexNomType];
-            const date = rowGSheet[indices.indexDate];
-            const couleur = rowGSheet[indices.indexCOL];
-            const opacityBorder = isInSelectedRegion ? 1 : 0;
-
-            L.circleMarker([correspondance.lat, correspondance.lon], {
-                color: couleur || 'grey',
-                fillColor: couleur || 'grey',
-                fillOpacity: opacity, // Utilise l'opacité basée sur l'appartenance à la région
-                opacity: opacityBorder,
-                radius: 5
-            }).addTo(map)
-            .bindTooltip(`<strong>${associatedCompany}</strong><br>${nomType}<br>${date}`, { 
-                permanent: false, 
-                direction: 'auto'
-            });
+            const key = `${correspondance.lat},${correspondance.lon}`;
+            if (!pointsGroupedByLocation[key]) {
+                pointsGroupedByLocation[key] = {
+                    data: [],
+                    color: row[indices.indexCOL] || 'grey', // Utilisez la couleur du premier point
+                };
+            }
+            pointsGroupedByLocation[key].data.push(row);
         }
     });
-
-
+    
+    // Créer des marqueurs pour chaque groupe de points
+    Object.keys(pointsGroupedByLocation).forEach((key) => {
+        const groupData = pointsGroupedByLocation[key].data;
+        const [lat, lon] = key.split(',');
+        const groupColor = pointsGroupedByLocation[key].color; // Couleur du groupe
+    
+        // Générer le contenu du tooltip basé sur le groupe de points
+        let tooltipContent = groupData.map(point => {
+            return `<strong>${point[indices.indexAssociatedCompany]}</strong><br>${point[indices.indexNomType]}<br>${point[indices.indexDate]}`;
+        }).join('<hr>');
+    
+        // Déterminez l'opacité pour le groupe en vérifiant chaque point
+        let opacity = 0.5; // Valeur par défaut pour les points hors de la région sélectionnée
+        let opacityBorder = 0.5;
+        groupData.forEach(point => {
+            const isInSelectedRegion = !selectedRegion || point[indices.indexRegion] === selectedRegion;
+            if (isInSelectedRegion) {
+                opacity = 1; // Ajustez l'opacité pour les points dans la région sélectionnée
+                opacityBorder = 1;
+            }
+        });
+    
+        // Créer un marqueur pour ce groupe avec les propriétés spécifiées
+        L.circleMarker([lat, lon], {
+            color: groupColor,
+            fillColor: groupColor,
+            fillOpacity: opacity, // Ajustez selon vos besoins
+            opacity: opacityBorder, // Ajustez selon vos besoins
+            radius: 5
+        }).addTo(map).bindTooltip(tooltipContent, {
+            permanent: false,
+            direction: 'auto'
+        });
+    });
+    
 }
