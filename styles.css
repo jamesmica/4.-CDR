@@ -54,6 +54,8 @@ th, td {
     transition: .5s width ease;
     color: white;
     border-left: 4px solid white;
+    /* transform-origin: 100% 50%;
+    float: right; */
 }
 
 #typeFilter {
@@ -159,7 +161,7 @@ table {
     overflow: scroll !important;
     overflow-x: hidden !important;
     height: calc(-255px + 100vh);
-    transition: .5s height;
+    /* transition: .5s height; */
 
 }
 
