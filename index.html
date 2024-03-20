@@ -19,16 +19,53 @@
 
     
     <div id="map" style="height: 100vh; float: left;"></div>
-    <div id="info" style="height: 100vh; float: right; overflow: auto;"></div>
     <div id="typeFilterContainer">
-        <h2>Cliquer sur une région pour filtrer la liste</h2>
-        <select id="typeFilter" style="padding: 5px; border: 1px solid #ccc;">
-            <option value="Tous">Tous</option>
-            <!-- Les options seront ajoutées dynamiquement -->
-        </select>
-        <button id="resetRegionBtn" onclick="resetRegionFilter()">Réinitialiser ⭯</button>
+        <div id="filter">
+            <!-- <h2>Cliquer sur une région pour filtrer la liste</h2> -->
+                <select id="typeFilter" style="padding: 5px; border: 1px solid #ccc;">
+                    <div>
+                    <option value="Tous">Tous</option>
+                    <!-- Les options seront ajoutées dynamiquement -->
+                </div>
+                </select>
+                <h2 class="titre-souligne">NOS INTERVENTIONS</h2>
+                <div id="typeFilterDisplay">
+                    <span data-value="ABS">ABS</span>
+                    <span data-value="CTG">CTG</span>
+                    <span data-value="Achat unique - Profil Croisé">Achat unique - Profil Croisé</span>
+                    <span data-value="Abonnement - Profil Croisé">Abonnement - Profil Croisé</span>
+                    <span data-value="Autre mission">Autre mission</span>
+                </div>
+                <script>
+                    document.querySelectorAll('#typeFilterDisplay span').forEach(function(span) {
+                        span.addEventListener('click', function() {
+                            // Supprimer la classe selected de tous les éléments
+                            document.querySelectorAll('#typeFilterDisplay span').forEach(function(span) {
+                                span.classList.remove('selected');
+                            });
+                            
+                            // Ajouter la classe selected à l'élément cliqué
+                            this.classList.add('selected');
+                            
+                            // Mettre à jour la valeur du select caché
+                            var value = this.getAttribute('data-value');
+                            document.querySelector('#typeFilter').value = value;
+                            
+                            // Déclencher l'événement change si nécessaire
+                            document.querySelector('#typeFilter').dispatchEvent(new Event('change'));
+                        });
+                    });
+
+
+                </script>
+            <div id="tFDRow">
+                <button id="resetRegionBtn" onclick="resetRegionFilter()">Réinitialiser ⭯</button>
+                <div id="nombreRef"></div>
+            </div>
+        </div>
+        <div id="info" style="float: right; overflow: auto;"></div>
         <div id="nombreElements"></div>
-        <button id="toggleInfoBtn">Masquer la liste ⯅</button>
+        <button id="toggleInfoBtn"></button>
     </div>
 
 

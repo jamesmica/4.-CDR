@@ -1,31 +1,135 @@
 #map {
-    height:100vh;
-    width: 100vw;
+    height: 100vh;
+    width: 100%;
     margin: 0;
     padding: 0;
+    /* min-width: 75%; */
 }
+
+/* width */
+::-webkit-scrollbar {
+    width: 10px;
+  }
+  
+  /* Track */
+  ::-webkit-scrollbar-track {
+    background: #00753B;
+    border-radius: 4px;
+  }
+  
+  /* Handle */
+  ::-webkit-scrollbar-thumb {
+    background: white;
+    border-radius: 4px;
+  }
+  
+  /* Handle on hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background: #ffffff97;
+  }
 
 body {
     font-family: calibri, Arial, Roboto;
     margin: 0;
+    overflow: hidden;
+}
+
+th, td {
+    width: 112px;
 }
 
 #typeFilterContainer {
     position: absolute;
     top: 0 !important;
     z-index: 1000;
-    background: white;
-    padding: 5px;
-    border-radius: 5px;
-    width: 311px;
-    height: 160px;
+    background: #00753B;
+    width: 360px;
+    height: 100vh;
     margin: auto;
-    margin-right: 17px;
     right: 0 !important;
     padding: 0 !important;
     font-size: 12px;
     opacity: 0.9;
+    overflow: visible;
+    transition: .5s width ease;
+    color: white;
+    border-left: 4px solid white;
 }
+
+#typeFilter {
+    display: none;
+}
+
+div#typeFilterDisplay {
+    display: flex;
+    flex-direction: column;
+    font-size: 16px;
+    width: 60%;
+    margin: auto;
+    margin-top: 16px;
+    margin-bottom: 0;
+}
+
+.titre-souligne {
+    font-size: 34px;
+    font-weight: bold;
+    color: white;
+    background-color: #00753B;
+    padding: 8px;
+    position: relative;
+    display: inline-block;
+    margin-top: 0;
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.titre-souligne:after {
+    content: '';
+    display: block;
+    width: 68%;
+    height: 3px;
+    background-color: white;
+    position: absolute;
+    bottom: 5px;
+    max-height: 42px;
+    left: 83px;
+}
+
+#typeFilterDisplay span {
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.selected {
+    font-weight: bold;
+    text-decoration: 2px underline;
+}
+
+#typeFilterDisplay span:hover {
+    text-decoration: 2px underline;
+}
+
+
+div#tFDRow {
+    display: flex;
+    justify-content: space-between;
+    width: 296px;
+    margin: auto;
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+div#nombreRef {
+    font-size: 16px;
+    padding: 8px;
+}
+
+div#filter {
+    display: flex;
+    flex-direction: column;
+}
+
+
 
 th {
     text-align: left;
@@ -35,29 +139,28 @@ div#typeFilterContainer > * {
     margin: 8px;
 }
 
-table {
-    margin-top: 160px;
-}
-
 h2 {
     font-size: 14px;
 }
 
+table {
+    margin-left: 32px;
+    margin-right: 16px;
+}
+
 #info {
-    height: 100vh;
-    float: right;
-    overflow: auto;
-    width: 311px;
-    padding: 16px;
+    width: auto;
     padding-top: 0;
     padding-bottom: 0;
-    margin-right: 0;
-    right: 0;
-    position: fixed;
-    z-index: 440;
-    background: white;
-    transition: .5s height ease;
+    background: #00753B;
     opacity: 0.9;
+    float: none !important;
+    margin: auto !important;
+    overflow: scroll !important;
+    overflow-x: hidden !important;
+    height: calc(100vw - 652px);
+    transition: .5s height;
+
 }
 
 button#resetRegionBtn {
@@ -65,7 +168,6 @@ button#resetRegionBtn {
     border: none;
     padding: 8px;
     color: white;
-    transition: .3s all;
     cursor: pointer;
 }
 
@@ -74,7 +176,6 @@ button#resetRegionBtn:hover {
     border: none;
     padding: 8px;
     color: #96bf9a;
-    transition: .3s all;
     cursor: pointer;
     outline: 1px solid #96bf9a;
 }
@@ -84,28 +185,101 @@ button#toggleInfoBtn:hover {
     border: none;
     padding: 8px;
     color: #00753B;
-    transition: .3s all;
     cursor: pointer;
-    outline: 1px solid #00753B;
+    outline: 4px solid white;
 }
 
 div#nombreElements {
-    max-width: 120px;
+    position: absolute;
+    top: 0;
+    left: -272px;
+    color: #00753B;
+    font-weight: bold;
+    font-size: 20px;
+    text-align: right;
+    width: 240px;
 }
 
 button#toggleInfoBtn {
-    background: #00753B;
+    background: #70BA7A;
     border: none;
     padding: 8px;
     color: white;
-    transition: .3s all;
     cursor: pointer;
-    right: 48px;
+    left: -32px;
     position: inherit;
-    top: 80px;
+    top: 50%;
+    outline: 4px solid;
 }
 
 .leaflet-tile-pane {
     -webkit-filter: opacity(80%) grayscale(100%);
     filter: opacity(40%) grayscale(100%);
 }
+
+#toggleInfoBtn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+#toggleInfoBtn:before, #toggleInfoBtn:after {
+    content: ''; /* Création d'un pseudo-élément pour la croix */
+    position: absolute;
+}
+
+
+
+
+
+
+
+button#toggleInfoBtn:hover:after, button#toggleInfoBtn:hover:before {
+    background-color: #00753B;
+}
+/* Styles pour le bouton quand la liste est masquée (croix) */
+.btn-arrow::before, .btn-arrow::after {
+    content: '';
+    position: absolute;
+    background-color: white;
+}
+
+.btn-arrow::before {
+    height: 2px;
+    width: 24px;
+    top: 24px;
+}
+
+.btn-arrow::after {
+    width: 2px;
+    height: 24px;
+    left: 24px;
+}
+
+.btn-arrow {
+    transform: rotate(45deg);
+}
+
+/* Styles pour le bouton quand la liste est affichée (flèche) */
+.btn-cross::before {
+    content: 'ᐸ' !important;
+    position: absolute;
+    border: none;
+    display: inline-block;
+    padding-right: 24px;
+    font-size: 18px;
+}
+
+.btn-cross:hover::before {
+    background-color: white !important;
+}
+
+/* Suppression de l'élément 'after' pour le style flèche */
+.btn-cross::after {
+    content: none;
+}
+

@@ -17,56 +17,62 @@ var indices; // Indices des colonnes nécessaires
 var dataCSV; // Données du fichier CSV
 var selectedType = "Tous"; // Type sélectionné, "Tous" par défaut
 var selectedRegion = null; // Région sélectionnée, null si aucune
+
+
 document.addEventListener("DOMContentLoaded", () => {
 
+
     document.getElementById('toggleInfoBtn').addEventListener('click', function() {
-        var infoDiv = document.getElementById('info');
+        var infoDiv = document.getElementById('typeFilterContainer');
         var toggleInfoBtn = document.getElementById('toggleInfoBtn');
-        // Si la div est actuellement ouverte (vérification basique avec max-height), la fermer. Sinon, l'ouvrir.
-        if (infoDiv.style.height !== "160px") {
-            infoDiv.style.height = "160px"; // Ferme la div
-            infoDiv.style.overflow = "hidden";
-            toggleInfoBtn.innerHTML = 'Afficher la liste ⯆';
+        
+        // Si la div est actuellement ouverte, la fermer.
+        if (infoDiv.style.width !== "0px") {
+            infoDiv.style.width = "0px"; 
+            toggleInfoBtn.classList.remove('btn-arrow');
+            toggleInfoBtn.classList.add('btn-cross');
         } else {
-            // Ouvrir la div en ajustant le max-height à la hauteur du contenu ou à une valeur suffisamment grande
-            // Pour une ouverture complète, vous pouvez temporairement changer max-height à 'none' pour calculer la hauteur du contenu
-            infoDiv.style.height = "100vh";
-            infoDiv.style.height = "100vh";
-            infoDiv.style.overflow = "auto";
-            toggleInfoBtn.innerHTML = 'Masquer la liste ⯅';
+            // Ouvrir la div en ajustant le height à la hauteur du contenu ou à une valeur suffisamment grande
+            infoDiv.style.width = "360px";
+            toggleInfoBtn.classList.remove('btn-cross');
+            toggleInfoBtn.classList.add('btn-arrow');
             setTimeout(function() {
+                // Code pour la transition si nécessaire
             }, 10); // Petite temporisation pour la transition
         }
     });
     
+    // Initialisez le bouton avec la bonne classe au chargement de la page
+    document.getElementById('toggleInfoBtn').classList.add('btn-arrow');
+    
+    
     init(); // Initialisation et chargement des données
-    
-    map.on("click", function (event) {
-        // Utilisez leafletPip.pointInLayer pour trouver les couches sous le point cliqué
-        var clickedLayers = leafletPip.pointInLayer(event.latlng, geojsonLayer, true);
-    
-        // Vérifiez si des couches ont été trouvées
-        if (clickedLayers.length > 0) {
-            // Ici, vous pouvez effectuer des actions spécifiques avec chaque couche trouvée
-
-            // Parcourir chaque couche trouvée. Exemple pour déclencher des actions sur la première couche seulement :
-            var firstLayer = clickedLayers[0]; // Prendre la première couche trouvée
-            
-            // Vérifiez si cette couche a un gestionnaire d'événements 'click' que vous souhaitez déclencher
-            if (firstLayer && firstLayer.feature && firstLayer.fire) {
-                firstLayer.fire('click', {
-                    latlng: event.latlng,
-                    layer: firstLayer
-                }); // Simuler un clic sur cette couche
-                
-                // Note: Assurez-vous que vos couches GeoJSON ont des gestionnaires d'événements 'click' attachés pour gérer cet événement simulé.
-            }
-        } else {
-            console.log("Aucune couche trouvée sous le point cliqué.");
-        }
-    });
 });
 
+map.on("click", function (event) {
+    // Utilisez leafletPip.pointInLayer pour trouver les couches sous le point cliqué
+    var clickedLayers = leafletPip.pointInLayer(event.latlng, geojsonLayer, true);
+
+    // Vérifiez si des couches ont été trouvées
+    if (clickedLayers.length > 0) {
+        // Ici, vous pouvez effectuer des actions spécifiques avec chaque couche trouvée
+
+        // Parcourir chaque couche trouvée. Exemple pour déclencher des actions sur la première couche seulement :
+        var firstLayer = clickedLayers[0]; // Prendre la première couche trouvée
+        
+        // Vérifiez si cette couche a un gestionnaire d'événements 'click' que vous souhaitez déclencher
+        if (firstLayer && firstLayer.feature && firstLayer.fire) {
+            firstLayer.fire('click', {
+                latlng: event.latlng,
+                layer: firstLayer
+            }); // Simuler un clic sur cette couche
+            
+            // Note: Assurez-vous que vos couches GeoJSON ont des gestionnaires d'événements 'click' attachés pour gérer cet événement simulé.
+        }
+    } else {
+        console.log("Aucune couche trouvée sous le point cliqué.");
+    }
+});
 
 function init() {
     fetch(url)
@@ -194,6 +200,7 @@ function resetRegionFilter() {
     
     // Réinitialise la sélection du filtre de type dans l'UI
     document.getElementById('typeFilter').value = "Tous";
+    // document.getElementById('info').style.height = "0";
     
     // Réinitialise la vue de la carte à la position et au zoom par défaut
     map.setView([46.71109, 1.7191036], 6);
@@ -209,6 +216,7 @@ function applyFilters() {
             map.removeLayer(layer);
         }
     });
+
 
     // Filtrer les données Google Sheets selon les critères sélectionnés
     const filteredRows = rowsGSheet.filter(row => {
@@ -227,6 +235,8 @@ function applyFilters() {
         document.getElementById('nombreElements').innerHTML = `France > ${selectedType}<br> ${filteredRows.length} références`;
     }
 
+    document.getElementById('nombreRef').innerHTML = `${filteredRows.length} résultats`
+
 
     // Construire le contenu HTML pour le tableau d'informations
     let infoHTML = `<table><tr><th>Territoire</th><th>Type</th><th>Date</th></tr>`;
@@ -240,6 +250,7 @@ function applyFilters() {
 
     // Mettre à jour l'élément HTML avec les informations filtrées
     document.getElementById('info').innerHTML = infoHTML;
+    document.getElementById('info').style.height = "calc(100vw - 652px)"
 
     const filteredRowsByType = rowsGSheet.filter(row => selectedType === "Tous" || row[indices.indexType] === selectedType);
 
@@ -269,4 +280,6 @@ function applyFilters() {
             });
         }
     });
+
+
 }
