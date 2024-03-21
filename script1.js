@@ -176,7 +176,10 @@ function chargerCSV(urlCSV) {
 function resetRegionFilter() {
     selectedRegion = null; // Réinitialise la sélection de la région
     selectedType = "Tous"; // Réinitialise la sélection du type à "Tous"
-    
+    var elements = document.getElementsByClassName('selected');
+    for (var i = 0; i < elements.length; i++) {
+        elements[i].classList.remove('selected');
+    }    
     // Réinitialise le style de la région précédemment sélectionnée, si applicable
     if (previousSelectedLayer) {
         geojsonLayer.resetStyle(previousSelectedLayer);
@@ -213,13 +216,13 @@ function applyFilters() {
     });
 
     if (selectedRegion && selectedType != "Tous") {
-        document.getElementById('nombreElements').innerHTML = `${selectedRegion} > ${selectedType}<br> ${filteredRows.length} références`;
+        document.getElementById('nombreElements').innerHTML = `${selectedRegion} > ${selectedType}`;
     } else if (selectedType === "Tous" && !selectedRegion) {
-        document.getElementById('nombreElements').innerHTML = `France<br>${filteredRows.length} références`;
+        document.getElementById('nombreElements').innerHTML = `France`;
     } else if (selectedType === "Tous" && selectedRegion) {
-        document.getElementById('nombreElements').innerHTML = `${selectedRegion}<br> ${filteredRows.length} références`;
+        document.getElementById('nombreElements').innerHTML = `${selectedRegion}`;
     } else if (selectedType !== "Tous" && !selectedRegion) {
-        document.getElementById('nombreElements').innerHTML = `France > ${selectedType}<br> ${filteredRows.length} références`;
+        document.getElementById('nombreElements').innerHTML = `France > ${selectedType}`;
     }
 
     document.getElementById('nombreRef').innerHTML = `${filteredRows.length} résultats`
@@ -237,7 +240,7 @@ function applyFilters() {
 
     // Mettre à jour l'élément HTML avec les informations filtrées
     document.getElementById('info').innerHTML = infoHTML;
-    document.getElementById('info').style.height = "calc(-255px + 100vh)"
+    document.getElementById('info').style.height = "calc(-312px + 100vh)"
 
     const filteredRowsByType = rowsGSheet.filter(row => selectedType === "Tous" || row[indices.indexType] === selectedType);
 

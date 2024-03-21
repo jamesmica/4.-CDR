@@ -107,11 +107,6 @@ div#typeFilterDisplay {
     text-decoration: 2px underline;
 }
 
-#typeFilterDisplay span:hover {
-    text-decoration: 2px underline;
-}
-
-
 div#tFDRow {
     display: flex;
     justify-content: space-between;
@@ -164,7 +159,7 @@ table {
     margin: auto !important;
     overflow: scroll !important;
     overflow-x: hidden !important;
-    height: calc(-255px + 100vh);
+    height: calc(-312px + 100vh);
     /* transition: .5s height; */
 
 }
@@ -198,14 +193,12 @@ button#toggleInfoBtn:hover {
 }
 
 div#nombreElements {
-    position: absolute;
-    top: 0;
-    left: -272px;
-    color: #00753B;
-    font-weight: bold;
-    font-size: 20px;
-    text-align: right;
-    width: 240px;
+    position: relative;
+    color: white;
+    font-weight: normal;
+    font-size: 14px;
+    text-align: center;
+    width: 344px;
 }
 
 button#toggleInfoBtn {
@@ -290,4 +283,48 @@ button#toggleInfoBtn:hover:after, button#toggleInfoBtn:hover:before {
 .btn-cross::after {
     content: none;
 }
+
+
+.animated-underline {
+    position: relative;
+    text-decoration: none;
+  }
+  
+  .animated-underline::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px; /* Épaisseur de l'underline */
+    bottom: 0; /* Ajustez en fonction de l'espacement désiré par rapport au texte */
+    left: 0;
+    background-color: white; /* Couleur de l'underline */
+    transition: width 0.5s ease 0s; /* Ajustez la vitesse et le type d'animation */
+  }
+  
+  .animated-underline:hover::after {
+    width: 64px;
+    left: 0;
+  }
+
+  .animated-underline.selected {
+    position: relative;
+    text-decoration: none;
+  }
+  
+  .animated-underline.selected::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px; /* Épaisseur de l'underline */
+    bottom: 0; /* Ajustez en fonction de l'espacement désiré par rapport au texte */
+    left: 0;
+    background-color: white; /* Couleur de l'underline */
+    transition: width 0.5s ease 0s; /* Ajustez la vitesse et le type d'animation */
+  }
+  
+  .animated-underline.selected::after {
+    width: 64px;
+    left: 0;
+  }
+  
 

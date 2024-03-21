@@ -30,13 +30,14 @@
                 </select>
                 <h2 class="titre-souligne">NOS INTERVENTIONS</h2>
                 <div id="typeFilterDisplay">
-                    <span data-value="ABS">ABS</span>
-                    <span data-value="CTG">CTG</span>
-                    <span data-value="Achat unique - Profil Croisé">Achat unique - Profil Croisé</span>
-                    <span data-value="Abonnement - Profil Croisé">Abonnement - Profil Croisé</span>
-                    <span data-value="Autre mission">Autre mission de conseil</span>
+                    <span class="animated-underline" data-value="ABS">ABS</span>
+                    <span class="animated-underline" data-value="CTG">CTG</span>
+                    <span class="animated-underline" data-value="Achat unique - Profil Croisé">Achat unique - Profil Croisé</span>
+                    <span class="animated-underline" data-value="Abonnement - Profil Croisé">Abonnement - Profil Croisé</span>
+                    <span class="animated-underline" data-value="Autre mission">Autre mission de conseil</span>
                 </div>
                 <hr>
+                <div id="nombreElements"></div>
                 <script>
                     document.querySelectorAll('#typeFilterDisplay span').forEach(function(span) {
                         span.addEventListener('click', function() {
@@ -65,7 +66,7 @@
             </div>
         </div>
         <div id="info" style="float: right; overflow: auto;"></div>
-        <div id="nombreElements"></div>
+        
         <button id="toggleInfoBtn"></button>
     </div>
 
