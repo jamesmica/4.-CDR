@@ -173,13 +173,37 @@ function chargerCSV(urlCSV) {
         });
 }
 
+document.querySelectorAll('.animated-underline:not(.selected)').forEach(link => {
+    link.addEventListener('mouseover', () => {
+      link.classList.add('hover');
+    });
+  
+    link.addEventListener('mouseout', () => {
+      // Ajoute temporairement une classe pour gérer l'animation de sortie.
+      link.classList.remove('hover');
+      link.classList.add('hover-out');
+  
+      setTimeout(() => {
+        link.classList.remove('hover-out');
+      }, 300); // Assurez-vous que ce délai correspond à la durée de votre animation CSS.
+    });
+  });
+  
+
 function resetRegionFilter() {
     selectedRegion = null; // Réinitialise la sélection de la région
     selectedType = "Tous"; // Réinitialise la sélection du type à "Tous"
-    var elements = document.getElementsByClassName('selected');
-    for (var i = 0; i < elements.length; i++) {
-        elements[i].classList.remove('selected');
-    }    
+
+    document.querySelectorAll('.selected').forEach(link => {
+      
+          // Ajoute temporairement une classe pour gérer l'animation de sortie.
+          link.classList.remove('selected');
+          link.classList.add('hover-out');
+      
+          setTimeout(() => {
+            link.classList.remove('hover-out');
+          }, 300); // Assurez-vous que ce délai correspond à la durée de votre animation CSS.
+        });
     // Réinitialise le style de la région précédemment sélectionnée, si applicable
     if (previousSelectedLayer) {
         geojsonLayer.resetStyle(previousSelectedLayer);

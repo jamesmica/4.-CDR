@@ -102,10 +102,7 @@ div#typeFilterDisplay {
     white-space: nowrap;
 }
 
-.selected {
-    font-weight: bold;
-    text-decoration: 2px underline;
-}
+
 
 div#tFDRow {
     display: flex;
@@ -298,9 +295,14 @@ button#toggleInfoBtn:hover:after, button#toggleInfoBtn:hover:before {
     bottom: 0; /* Ajustez en fonction de l'espacement désiré par rapport au texte */
     left: 0;
     background-color: white; /* Couleur de l'underline */
-    transition: width 0.5s ease 0s; /* Ajustez la vitesse et le type d'animation */
+    transition: width 0.3s ease 0s; /* Ajustez la vitesse et le type d'animation */
   }
   
+  .animated-underline:hover::after {
+    width: 64px;
+    left: 0;
+  }
+
   .animated-underline:hover::after {
     width: 64px;
     left: 0;
@@ -319,12 +321,19 @@ button#toggleInfoBtn:hover:after, button#toggleInfoBtn:hover:before {
     bottom: 0; /* Ajustez en fonction de l'espacement désiré par rapport au texte */
     left: 0;
     background-color: white; /* Couleur de l'underline */
-    transition: width 0.5s ease 0s; /* Ajustez la vitesse et le type d'animation */
+    transition: width 0.3s ease 0s; /* Ajustez la vitesse et le type d'animation */
   }
   
   .animated-underline.selected::after {
     width: 64px;
     left: 0;
   }
+
+  .animated-underline.hover-out::after {
+    width: 0;
+    left: 64px; /* Déplace l'underline vers la droite */
+    transition: width 0.3s ease, left 0.3s ease; /* Assurez-vous que ce délai correspond à la durée de votre animation CSS */
+  }
+  
   
 
