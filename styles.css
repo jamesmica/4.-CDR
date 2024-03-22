@@ -156,7 +156,7 @@ table {
     margin: auto !important;
     overflow: scroll !important;
     overflow-x: hidden !important;
-    height: calc(-312px + 100vh);
+    height: calc(-328px + 100vh);
     /* transition: .5s height; */
 
 }
@@ -334,6 +334,14 @@ button#toggleInfoBtn:hover:after, button#toggleInfoBtn:hover:before {
     left: 64px; /* Déplace l'underline vers la droite */
     transition: width 0.3s ease, left 0.3s ease; /* Assurez-vous que ce délai correspond à la durée de votre animation CSS */
   }
+
+  div#nombreRefs {
+    font-size: 24px;
+    position: absolute;
+    color: #00753B;
+    left: -180px;
+    font-weight: bold;
+}
   
   
 

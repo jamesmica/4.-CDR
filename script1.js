@@ -19,6 +19,7 @@ var selectedType = "Tous"; // Type sélectionné, "Tous" par défaut
 var selectedRegion = null; // Région sélectionnée, null si aucune
 
 
+
 document.addEventListener("DOMContentLoaded", () => {
 
 
@@ -220,8 +221,23 @@ function resetRegionFilter() {
     map.setView([46.71109, 1.7191036], 6);
 }
 
+let filteredRows; // Ceci est une variable globale maintenant.
+let currentIndex = 0; // Vous devez initialiser ceci si vous ne l'avez pas déjà fait ailleurs.
+let batchSize = 20; // Vous devez initialiser ceci si vous ne l'avez pas déjà fait ailleurs.
 
 
+function loadBatch() {
+    let infoTable = document.getElementById('info-table'); // Assurez-vous que c'est l'id de votre tableau
+    for (let i = currentIndex; i < Math.min(filteredRows.length, currentIndex + batchSize); i++) {
+        const row = filteredRows[i];
+        const associatedCompany = row[indices.indexAssociatedCompany];
+        const nomType = row[indices.indexNomType];
+        const date = row[indices.indexDate];
+        let rowHTML = `<tr><td>${associatedCompany}</td><td>${nomType}</td><td>${date}</td></tr>`;
+        infoTable.innerHTML += rowHTML;
+    }
+    currentIndex += batchSize; // Mettre à jour l'index pour le prochain lot
+}
 
 function applyFilters() {
     // Efface tous les marqueurs actuellement présents sur la carte
@@ -233,11 +249,24 @@ function applyFilters() {
 
     let pointsGroupedByLocation = {};
     // Filtrer les données Google Sheets selon les critères sélectionnés
-    const filteredRows = rowsGSheet.filter(row => {
+    filteredRows = rowsGSheet.filter(row => {
         const matchesType = selectedType === "Tous" || row[indices.indexType] === selectedType;
         const matchesRegion = !selectedRegion || row[indices.indexRegion] === selectedRegion;
         return matchesType && matchesRegion;
     });
+
+    infoHTML = `<table id="info-table"><tr><th>Territoire</th><th>Type</th><th>Date</th></tr>`;
+
+
+    filteredRows.forEach(row => {
+        const associatedCompany = row[indices.indexAssociatedCompany];
+        const nomType = row[indices.indexNomType];
+        const date = row[indices.indexDate];
+        infoHTML += `<tr><td>${associatedCompany}</td><td>${nomType}</td><td>${date}</td></tr>`;
+    });
+    infoHTML += `</table>`;
+
+    document.getElementById('nombreRefs').innerHTML = `${rowsGSheet.length} références`
 
     if (selectedRegion && selectedType != "Tous") {
         document.getElementById('nombreElements').innerHTML = `${selectedRegion} > ${selectedType}`;
@@ -253,18 +282,24 @@ function applyFilters() {
 
 
     // Construire le contenu HTML pour le tableau d'informations
-    let infoHTML = `<table><tr><th>Territoire</th><th>Type</th><th>Date</th></tr>`;
-    filteredRows.forEach(row => {
-        const associatedCompany = row[indices.indexAssociatedCompany];
-        const nomType = row[indices.indexNomType];
-        const date = row[indices.indexDate];
-        infoHTML += `<tr><td>${associatedCompany}</td><td>${nomType}</td><td>${date}</td></tr>`;
+    document.getElementById('info').innerHTML = infoHTML;
+    let infoTable = document.getElementById('info-table');
+
+    loadBatch();
+
+    
+    // Ajouter un écouteur d'événement pour le scroll
+    let infoElement = document.getElementById('info'); // Le conteneur qui doit être scrollé
+    infoElement.addEventListener('scroll', function() {
+        // Vérifier si on a atteint le bas du conteneur
+        if (infoElement.scrollHeight - infoElement.scrollTop === infoElement.clientHeight) {
+            loadBatch(); // Charger le prochain lot de lignes
+        }
     });
-    infoHTML += `</table>`;
 
     // Mettre à jour l'élément HTML avec les informations filtrées
     document.getElementById('info').innerHTML = infoHTML;
-    document.getElementById('info').style.height = "calc(-312px + 100vh)"
+    document.getElementById('info').style.height = "calc(-328px + 100vh)"
 
     const filteredRowsByType = rowsGSheet.filter(row => selectedType === "Tous" || row[indices.indexType] === selectedType);
 
