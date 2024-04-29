@@ -1,3 +1,4 @@
+
 const apiKey = 'AIzaSyC2YFqXtmJh4c4jYPwGvPmWnU1iEhGWj0E';
 const sheetId = '1FUhix1FToy_joK8lZuiZvZp6aCeQncByDaFVfPGKU1k';
 const range = 'Feuille 1!A1:J1500';
@@ -15,14 +16,16 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 var rowsGSheet; // Données Google Sheets
 var indices; // Indices des colonnes nécessaires
 var dataCSV; // Données du fichier CSV
-var selectedType = "Tous"; // Type sélectionné, "Tous" par défaut
-var selectedRegion = null; // Région sélectionnée, null si aucune
 
+var selectedRegion = null; // Région sélectionnée, null si aucune
+var selectedType = "Tous"; // Initialisation comme un tableau vide
+let filteredRows; // Ceci est une variable globale maintenant.
+let currentIndex = 0; // Vous devez initialiser ceci si vous ne l'avez pas déjà fait ailleurs.
+let batchSize = 20; // Vous devez initialiser ceci si vous ne l'avez pas déjà fait ailleurs.
 
 
 document.addEventListener("DOMContentLoaded", () => {
-
-
+        
     document.getElementById('toggleInfoBtn').addEventListener('click', function() {
         var infoDiv = document.getElementById('typeFilterContainer');
         
@@ -43,8 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
     
     
     init(); // Initialisation et chargement des données
-
-});
 
 map.on("click", function (event) {
 
@@ -67,6 +68,7 @@ map.on("click", function (event) {
 
 function init() {
     fetch(url)
+    
         .then(response => response.json())
         .then(data => {
             const header = data.values[0];
@@ -99,10 +101,43 @@ function init() {
         })
         .catch(error => console.error('Erreur lors de la récupération des données :', error));
 
-    document.getElementById('typeFilter').addEventListener('change', function() {
-        selectedType = this.value;
-        applyFilters();
-    });
+
+        function updateSelectedTypes() {
+
+        }
+        
+        document.getElementById('typeFilter').addEventListener('change', function() {
+            selectedType = Array.from(this.selectedOptions).map(option => option.value);
+            console.log('Updated Selected Types:', selectedType); // Ceci devrait afficher les types sélectionnés
+            applyFilters();
+        });
+
+        document.querySelectorAll('#typeFilterDisplay span').forEach(function(span) {
+            span.addEventListener('click', function() {
+                // Toggle la classe 'selected' sur les spans
+                this.classList.toggle('selected');
+        
+                // Récupérer tous les spans sélectionnés
+                var selectedSpans = document.querySelectorAll('#typeFilterDisplay span.selected');
+                var selectedValues = Array.from(selectedSpans).map(span => span.getAttribute('data-value'));
+        
+                console.log("Selected Types: ", selectedValues); // Debugging
+        
+                // Obtenir la référence au <select> caché
+                const selectElement = document.getElementById('typeFilter');
+        
+                // Mettre à jour les options du <select> pour refléter la sélection des spans
+                Array.from(selectElement.options).forEach(option => {
+                    option.selected = selectedValues.includes(option.value);
+                });
+        
+                // Déclencher l'événement 'change' sur le <select> pour appliquer les filtres
+                selectElement.dispatchEvent(new Event('change'));
+            });
+        });
+        
+        
+        
 
 fetch('./regions-20180101.json')
 .then(response => response.json())
@@ -191,40 +226,7 @@ document.querySelectorAll('.animated-underline:not(.selected)').forEach(link => 
   });
   
 
-function resetRegionFilter() {
-    selectedRegion = null; // Réinitialise la sélection de la région
-    selectedType = "Tous"; // Réinitialise la sélection du type à "Tous"
-
-    document.querySelectorAll('.selected').forEach(link => {
-      
-          // Ajoute temporairement une classe pour gérer l'animation de sortie.
-          link.classList.remove('selected');
-          link.classList.add('hover-out');
-      
-          setTimeout(() => {
-            link.classList.remove('hover-out');
-          }, 300); // Assurez-vous que ce délai correspond à la durée de votre animation CSS.
-        });
-    // Réinitialise le style de la région précédemment sélectionnée, si applicable
-    if (previousSelectedLayer) {
-        geojsonLayer.resetStyle(previousSelectedLayer);
-        previousSelectedLayer = null; // Efface la référence à la couche précédemment sélectionnée
-    }
-
-    applyFilters(); // Applique les filtres sans la sélection de région
-    
-    // Réinitialise la sélection du filtre de type dans l'UI
-    document.getElementById('typeFilter').value = "Tous";
-    // document.getElementById('info').style.height = "0";
-    
-    // Réinitialise la vue de la carte à la position et au zoom par défaut
-    map.setView([46.71109, 1.7191036], 6);
-}
-
-let filteredRows; // Ceci est une variable globale maintenant.
-let currentIndex = 0; // Vous devez initialiser ceci si vous ne l'avez pas déjà fait ailleurs.
-let batchSize = 20; // Vous devez initialiser ceci si vous ne l'avez pas déjà fait ailleurs.
-
+});
 
 function loadBatch() {
     let infoTable = document.getElementById('info-table'); // Assurez-vous que c'est l'id de votre tableau
@@ -248,12 +250,18 @@ function applyFilters() {
     });
 
     let pointsGroupedByLocation = {};
-    // Filtrer les données Google Sheets selon les critères sélectionnés
+    console.log(selectedType);
+    
     filteredRows = rowsGSheet.filter(row => {
-        const matchesType = selectedType === "Tous" || row[indices.indexType] === selectedType;
+        const matchesType = selectedType.includes("Tous") || (Array.isArray(selectedType) && selectedType.some(type => type === row[indices.indexType]));
         const matchesRegion = !selectedRegion || row[indices.indexRegion] === selectedRegion;
         return matchesType && matchesRegion;
     });
+
+
+    
+    
+     console.log('filteredRows : ',filteredRows);
 
     infoHTML = `<table id="info-table"><tr><th>Territoire</th><th>Type</th><th>Date</th></tr>`;
 
@@ -269,14 +277,17 @@ function applyFilters() {
     document.getElementById('nombreRefs').innerHTML = `${rowsGSheet.length} références`
 
     if (selectedRegion && selectedType != "Tous") {
-        document.getElementById('nombreElements').innerHTML = `${selectedRegion} > ${selectedType}`;
+        // Convertir le tableau `selectedType` en chaîne avec une virgule et un espace, puis l'afficher
+        document.getElementById('nombreElements').innerHTML = `${selectedRegion} > ${selectedType.join(', ')}`;
     } else if (selectedType === "Tous" && !selectedRegion) {
         document.getElementById('nombreElements').innerHTML = `France`;
     } else if (selectedType === "Tous" && selectedRegion) {
         document.getElementById('nombreElements').innerHTML = `${selectedRegion}`;
     } else if (selectedType !== "Tous" && !selectedRegion) {
-        document.getElementById('nombreElements').innerHTML = `France > ${selectedType}`;
+        // Ici aussi, convertir et afficher `selectedType` correctement
+        document.getElementById('nombreElements').innerHTML = `France > ${selectedType.join(', ')}`;
     }
+    
 
     document.getElementById('nombreRef').innerHTML = `${filteredRows.length} résultats`
 
@@ -301,7 +312,12 @@ function applyFilters() {
     document.getElementById('info').innerHTML = infoHTML;
     document.getElementById('info').style.height = "calc(-328px + 100vh)"
 
-    const filteredRowsByType = rowsGSheet.filter(row => selectedType === "Tous" || row[indices.indexType] === selectedType);
+    const filteredRowsByType = rowsGSheet.filter(row => 
+        selectedType.includes("Tous") || selectedType.includes(row[indices.indexType])
+    );
+    
+
+    console.log(filteredRowsByType);
 
     filteredRowsByType.forEach(row => {
         const codeInsee = row[indices.indexCodeInsee].toString().trim();
@@ -317,6 +333,8 @@ function applyFilters() {
             pointsGroupedByLocation[key].data.push(row);
         }
     });
+
+
     
     // Créer des marqueurs pour chaque groupe de points
     Object.keys(pointsGroupedByLocation).forEach((key) => {
@@ -353,4 +371,31 @@ function applyFilters() {
         });
     });
     
+}
+
+
+function resetRegionFilter() {
+    selectedRegion = null; // Réinitialise la sélection de la région
+    selectedType = "Tous"; // Réinitialise la sélection du type à "Tous"
+
+    document.querySelectorAll('.selected').forEach(link => {
+      
+          // Ajoute temporairement une classe pour gérer l'animation de sortie.
+          link.classList.remove('selected');
+          link.classList.add('hover-out');
+      
+          setTimeout(() => {
+            link.classList.remove('hover-out');
+          }, 300); // Assurez-vous que ce délai correspond à la durée de votre animation CSS.
+        });
+
+        document.getElementById('typeFilter').value = "Tous"; // Réinitialise la sélection
+        applyFilters(); 
+    
+    // Réinitialise la sélection du filtre de type dans l'UI
+    document.getElementById('typeFilter').value = "Tous";
+    // document.getElementById('info').style.height = "0";
+    
+    // Réinitialise la vue de la carte à la position et au zoom par défaut
+    map.setView([46.71109, 1.7191036], 6);
 }

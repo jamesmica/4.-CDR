@@ -22,11 +22,9 @@
     <div id="typeFilterContainer">
         <div id="filter">
             <!-- <h2>Cliquer sur une région pour filtrer la liste</h2> -->
-                <select id="typeFilter" style="padding: 5px; border: 1px solid #ccc;">
-                    <div>
+                <select id="typeFilter" multiple style="padding: 5px; border: 1px solid #ccc;">
                     <option value="Tous">Tous</option>
                     <!-- Les options seront ajoutées dynamiquement -->
-                </div>
                 </select>
                 <h2 class="titre-souligne">NOS INTERVENTIONS</h2>
                 <div id="typeFilterDisplay">
@@ -40,28 +38,7 @@
                 <hr>
                 <div id="nombreElements"></div>
                 <div id="nombreRefs"></div>
-                <script>
-                    document.querySelectorAll('#typeFilterDisplay span').forEach(function(span) {
-                        span.addEventListener('click', function() {
-                            // Supprimer la classe selected de tous les éléments
-                            document.querySelectorAll('#typeFilterDisplay span').forEach(function(span) {
-                                span.classList.remove('selected');
-                            });
-                            
-                            // Ajouter la classe selected à l'élément cliqué
-                            this.classList.add('selected');
-                            
-                            // Mettre à jour la valeur du select caché
-                            var value = this.getAttribute('data-value');
-                            document.querySelector('#typeFilter').value = value;
-                            
-                            // Déclencher l'événement change si nécessaire
-                            document.querySelector('#typeFilter').dispatchEvent(new Event('change'));
-                        });
-                    });
 
-
-                </script>
             <div id="tFDRow">
                 <button id="resetRegionBtn" onclick="resetRegionFilter()">Réinitialiser ⭯</button>
                 <div id="nombreRef"></div>
