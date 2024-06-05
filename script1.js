@@ -23,9 +23,11 @@ let currentIndex = 0; // Vous devez initialiser ceci si vous ne l'avez pas déj�
 let batchSize = 20; // Vous devez initialiser ceci si vous ne l'avez pas déjà fait ailleurs.
 
 document.addEventListener("DOMContentLoaded", () => {
+    var infoDiv = document.getElementById('typeFilterContainer');
+    infoDiv.style.width = "0px";
 
     document.getElementById('toggleInfoBtn').addEventListener('click', function() {
-        var infoDiv = document.getElementById('typeFilterContainer');
+        
         
         if (infoDiv.style.width !== "0px") {
             requestAnimationFrame(() => {
