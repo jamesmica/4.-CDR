@@ -25,6 +25,7 @@ let batchSize = 20; // Vous devez initialiser ceci si vous ne l'avez pas déjà 
 document.addEventListener("DOMContentLoaded", () => {
     var infoDiv = document.getElementById('typeFilterContainer');
     infoDiv.style.width = "0px";
+    toggleInfoBtn.classList.replace('btn-arrow', 'btn-cross');
 
     document.getElementById('toggleInfoBtn').addEventListener('click', function() {
         
