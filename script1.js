@@ -227,6 +227,26 @@ function loadBatch() {
     currentIndex += batchSize; // Mettre à jour l'index pour le prochain lot
 }
 
+function resetRegionFilter() {
+    selectedRegion = null; // Réinitialise la sélection de la région
+    selectedType = ["Tous"]; // Réinitialise la sélection du type à "Tous"
+
+    document.querySelectorAll('.selected').forEach(link => {
+        link.classList.remove('selected');
+        link.classList.add('hover-out');
+      
+        setTimeout(() => {
+            link.classList.remove('hover-out');
+        }, 300); // Assurez-vous que ce délai correspond à la durée de votre animation CSS.
+    });
+
+    document.getElementById('typeFilter').value = "Tous"; // Réinitialise la sélection
+    applyFilters(); 
+
+    // Réinitialise la vue de la carte à la position et au zoom par défaut
+    map.setView([46.71109, 1.7191036], 6);
+}
+
 function applyFilters() {
     // Clear all current markers on the map
     map.eachLayer(function(layer) {
@@ -250,9 +270,9 @@ function applyFilters() {
 
     filteredRows.forEach(row => {
         if (row && indices.indexAssociatedCompany !== undefined && indices.indexNomType !== undefined && indices.indexDate !== undefined) {
-            const associatedCompany = row[indices.indexAssociatedCompany];
-            const nomType = row[indices.indexNomType];
-            const date = row[indices.indexDate];
+            const associatedCompany = row[indices.indexAssociatedCompany] || 'N/A';
+            const nomType = row[indices.indexNomType] || 'N/A';
+            const date = row[indices.indexDate] || 'N/A';
             infoHTML += `<tr><td>${associatedCompany}</td><td>${nomType}</td><td>${date}</td></tr>`;
         } else {
             console.error('Undefined row or index:', row, indices);
@@ -284,7 +304,7 @@ function applyFilters() {
     console.log(filteredRowsByType);
 
     filteredRowsByType.forEach(row => {
-        const codeInsee = row[indices.indexCodeInsee].toString().trim();
+        const codeInsee = (row[indices.indexCodeInsee] || '').toString().trim();
         const correspondance = dataCSV.find(rowCSV => rowCSV.INSEE === codeInsee);
         if (correspondance) {
             const key = `${correspondance.lat},${correspondance.lon}`;
@@ -328,24 +348,4 @@ function applyFilters() {
             direction: 'auto'
         });
     });
-}
-
-function resetRegionFilter() {
-    selectedRegion = null; // Réinitialise la sélection de la région
-    selectedType = []; // Réinitialise la sélection du type à "Tous"
-
-    document.querySelectorAll('.selected').forEach(link => {
-        link.classList.remove('selected');
-        link.classList.add('hover-out');
-      
-        setTimeout(() => {
-            link.classList.remove('hover-out');
-        }, 300); // Assurez-vous que ce délai correspond à la durée de votre animation CSS.
-    });
-
-    document.getElementById('typeFilter').value = "Tous"; // Réinitialise la sélection
-    applyFilters(); 
-
-    // Réinitialise la vue de la carte à la position et au zoom par défaut
-    map.setView([46.71109, 1.7191036], 6);
 }
