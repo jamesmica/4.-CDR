@@ -1,347 +1,323 @@
-#map {
-    height: 100vh;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    /* min-width: 75%; */
+:root{
+  --green:#00753B;
+  --green-2:#0E7C3A;
+  --bg:#0c0f0e;
+  --panel:#0d3d25;
+  --panel-weak:#125934;
+  --text:#ffffff;
+  --muted:#d3e6dc;
+  --border:rgba(255,255,255,.18);
+  --chip:#1b6a40;
+  --chip-active:#2ea76b;
+  --shadow:0 10px 30px rgba(0,0,0,.25);
+  --panel-width: 380px; /* une seule source de vérité */
 }
 
-/* width */
-::-webkit-scrollbar {
-    width: 10px;
-  }
-  
-  /* Track */
-  ::-webkit-scrollbar-track {
-    background: #00753B;
-    border-radius: 4px;
-  }
-  
-  /* Handle */
-  ::-webkit-scrollbar-thumb {
-    background: white;
-    border-radius: 4px;
-  }
-  
-  /* Handle on hover */
-  ::-webkit-scrollbar-thumb:hover {
-    background: #ffffff97;
-  }
+*{ box-sizing:border-box }
 
-body {
-    font-family: calibri, Arial, Roboto;
-    margin: 0;
-    overflow: hidden;
+html,body,#app{ height:100% }
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  color:var(--text);
+  background:var(--bg);
+  overflow:hidden;
 }
 
-th, td {
-    width: 112px;
-}
-
-#typeFilterContainer {
-    position: absolute;
-    top: 0 !important;
-    z-index: 1000;
-    background: #00753B;
-    width: 360px;
-    height: 100vh;
-    margin: auto;
-    right: 0 !important;
-    padding: 0 !important;
-    font-size: 12px;
-    opacity: 0.9;
-    overflow: visible;
-    transition: .5s width ease;
-    color: white;
-    border-left: 4px solid white;
-    /* transform-origin: 100% 50%;
-    float: right; */
-}
-
-#typeFilter {
-    display: none;
-}
-
-div#typeFilterDisplay {
-    display: flex;
-    flex-direction: column;
-    font-size: 16px;
-    width: 60%;
-    margin: auto;
-    margin-top: 16px;
-    margin-bottom: 0;
-}
-
-.titre-souligne {
-    font-size: 34px;
-    font-weight: bold;
-    color: white;
-    background-color: #00753B;
-    padding: 8px;
-    position: relative;
-    display: inline-block;
-    margin-top: 0;
-    margin-bottom: 0;
-    white-space: nowrap;
-}
-
-.titre-souligne:after {
-    content: '';
-    display: block;
-    width: 68%;
-    height: 3px;
-    background-color: white;
-    position: absolute;
-    bottom: 5px;
-    max-height: 42px;
-    left: 83px;
-}
-
-#typeFilterDisplay span {
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-
-
-div#tFDRow {
-    display: flex;
-    justify-content: space-between;
-    width: 296px;
-    margin: auto;
-    margin-top: 16px;
-    margin-bottom: 16px;
-}
-
-div#nombreRef {
-    font-size: 16px;
-    padding: 8px;
-}
-
-div#filter {
-    display: flex;
-    flex-direction: column;
-}
-
-hr {
-    width: 240px;
-    color: white;
-    font-size: 31px;
-}
-
-th {
-    text-align: left;
-}
-
-div#typeFilterContainer > * {
-    margin: 8px;
-}
-
-h2 {
-    font-size: 14px;
-}
-
-table {
-    margin-left: 32px;
-    margin-right: 16px;
-}
-
-#info {
-    width: auto;
-    padding-top: 0;
-    padding-bottom: 0;
-    background: #00753B;
-    opacity: 0.9;
-    float: none !important;
-    margin: auto !important;
-    overflow: scroll !important;
-    overflow-x: hidden !important;
-    height: calc(-328px + 100vh);
-    /* transition: .5s height; */
-
-}
-
-button#resetRegionBtn {
-    border-radius: 4px;
-    background: #96bf9a;
-    border: none;
-    padding: 8px;
-    color: white;
-    cursor: pointer;
-    outline: 2px solid white;
-}
-
-button#resetRegionBtn:hover {
-    background: white;
-    border: none;
-    padding: 8px;
-    color: #96bf9a;
-    cursor: pointer;
-    outline: 1px solid #96bf9a;
-}
-
-button#toggleInfoBtn:hover {
-    background: white;
-    border: none;
-    padding: 8px;
-    color: #00753B;
-    cursor: pointer;
-    outline: 4px solid white;
-}
-
-div#nombreElements {
-    position: relative;
-    color: white;
-    font-weight: normal;
-    font-size: 14px;
-    text-align: center;
-    width: 344px;
-}
-
-button#toggleInfoBtn {
-    background: #70BA7A;
-    border: none;
-    padding: 8px;
-    color: white;
-    cursor: pointer;
-    left: -32px;
-    position: inherit;
-    top: 50%;
-    outline: 4px solid;
-}
-
+/* Layout */
+#app{ position:relative }
+/* Rendu du fond de carte comme avant */
 .leaflet-tile-pane {
-    -webkit-filter: opacity(80%) grayscale(100%);
-    filter: opacity(40%) grayscale(100%);
+  -webkit-filter: opacity(80%) grayscale(100%);
+  filter: opacity(40%) grayscale(100%);
 }
 
-#toggleInfoBtn {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+#map{
+  position:absolute;
+  top:0; left:0; bottom:0;
+  right: 0;            /* <-- plein écran, ne plus toucher */
+  /* plus de transition sur 'right' */
 }
 
-#toggleInfoBtn:before, #toggleInfoBtn:after {
-    content: ''; /* Création d'un pseudo-élément pour la croix */
+/* Le panneau est toujours sur le côté droit */
+aside#panel{
+  position:absolute;
+  top:0; right:0; bottom:0;
+  width: var(--panel-width);
+  background:linear-gradient(180deg, var(--panel) 0%, var(--green) 100%);
+  border-left:3px solid #fff;
+  box-shadow: var(--shadow);
+  display:flex; flex-direction:column;
+  transition:transform .35s ease;
+  will-change:transform;
+  z-index:1000;
+}
+/* Repli = translation hors écran */
+body.panel-collapsed aside#panel{ transform: translateX(100%) }
+
+/* Bouton flottant (un seul) */
+#panelToggleFloating{
+  position:absolute;
+  top:50%;
+  right: calc(var(--panel-width) + 6px); /* collé au panneau */
+  transform: translateY(-50%);
+  width:36px; height:36px; border-radius:999px;
+  border:1px solid var(--border);
+  background: rgba(0, 0, 0, 0.623);
+  color:#fff; cursor:pointer; z-index:1001;
+}
+/* Quand replié, il vient au bord droit de l’écran */
+body.panel-collapsed #panelToggleFloating{
+  right: 4px;
+  transform: translateY(-50%); /* pas de rotation : on change le caractère en JS */
+}
+
+/* (Optionnel) supprime le style du bouton interne si encore dans le DOM */
+#togglePanel{ display:none !important; }
+
+.panel-header{
+  display:flex; align-items:center; gap:12px;
+  padding:10px 12px 8px 10px;
+  border-bottom:1px solid var(--border);
+}
+#togglePanel{
+  width:36px; height:36px; border-radius:999px;
+  border:1px solid var(--border);
+  color:#fff; background: rgba(255,255,255,.12);
+  cursor:pointer;
+}
+body.panel-collapsed #togglePanel{ transform:rotate(180deg) }
+
+.brand h1{
+  font-size:22px; line-height:1.1; margin:0;
+}
+.brand .muted{
+  font-size:12px; margin:0; color:var(--muted);
+}
+
+.controls{
+  padding:10px 12px;
+  border-bottom:1px solid var(--border);
+}
+
+.search-row{
+  display:flex; gap:8px; align-items:center;
+}
+#globalSearch{
+  flex:1; padding:10px 12px;
+  border-radius:8px; border:1px solid var(--border);
+  outline:none; background: rgba(255,255,255,.1);
+  color:#fff;
+}
+#globalSearch::placeholder{ color:#e9f3eeaa }
+#clearSearch{
+  border:1px solid var(--border);
+  background: rgba(255,255,255,.12);
+  color:#fff; border-radius:8px; height:36px; width:36px;
+  cursor:pointer;
+}
+
+.chips{
+  margin-top:10px; display:flex; flex-wrap:wrap; gap:8px;
+}
+.chip{
+  border:none; border-radius:999px; padding:6px 10px;
+  background: var(--chip);
+  color:#fff; cursor:pointer;
+  outline:2px solid rgba(255,255,255,.18);
+  box-shadow:0 2px 0 rgba(0,0,0,.15) inset;
+  transition: all .15s ease;
+}
+.chip.active{
+  background: var(--chip-active);
+  outline:2px solid var(--text);
+}
+.chip:hover{
+  transform: translateY(-1px);
+}
+.chip::before{
+  content:""; display:inline-block; width:.65em; height:.65em; border-radius:50%;
+  background: var(--chip-active);
+  margin-right:.45em;
+  box-shadow:0 0 0 2px rgba(0,0,0,.3) inset;
+}
+.chip.active::before{ background: var(--chip-active) }
+.chip:not(.active){ opacity:.6; }
+
+.scope{
+  margin-top:10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  color:#fff;
+}
+.scope .counts{ color:#e9f3ee; opacity:.9; }
+.soft{
+  margin-left:auto; border:1px solid var(--border);
+  background: transparent; color:#fff; border-radius:8px; padding:6px 10px;
+  cursor:pointer;
+}
+.soft:hover{ background: rgba(255,255,255,.12) }
+
+#tableWrap{
+  overflow:auto; height:100%;
+}
+table{
+  width:100%; border-collapse:separate; border-spacing:0;
+}
+thead th{
+  position:sticky; top:0; background: rgba(0,0,0,.2);
+  backdrop-filter: blur(6px);
+  border-bottom:1px solid var(--border);
+  padding:10px; text-align:left;
+  font-weight:600;
+}
+tbody td{
+  padding:10px; border-bottom:1px solid rgba(255,255,255,.1);
+  vertical-align:top;
+}
+tbody tr{ cursor:pointer }
+tbody tr:hover td{ background: rgba(255,255,255,.06) }
+tbody tr.row-focus td{ background: rgba(255,255,255,.13) }
+
+.type-pill{
+  display:inline-block; font-size:12px; font-weight:700; letter-spacing:.2px;
+  padding:8px 16px; border-radius:999px; color:#fff;
+  background: var(--pill-color, #1f8a70);
+  margin-bottom:4px;
+}
+td .sub{ font-size:12px; opacity:.9 }
+
+#emptyState{
+  padding:24px; text-align:center; color:#e9f3ee; opacity:.9;
+}
+.hidden{ display:none }
+
+/* Loader */
+.loader{
+  position:fixed; inset:0; display:grid; place-items:center; gap:12px;
+  background: rgba(0,0,0,.45);
+  z-index:9999; color:#fff;
+}
+.loader.hidden{ display:none }
+.spinner{
+  width:40px; height:40px; border-radius:50%;
+  border:4px solid rgba(255,255,255,.25);
+  border-top-color:#fff;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin{ to{ transform: rotate(360deg) } }
+
+/* Leaflet theming (légères touches) */
+.leaflet-container a{ color:#fff }
+.leaflet-tooltip{
+  background: rgba(0,0,0,.75);
+  color:#fff; border:1px solid rgba(255,255,255,.2);
+}
+.leaflet-control-zoom a{
+  background: rgba(255,255,255,.85);
+}
+
+/* Surlignage recherche */
+mark{
+  background:#fff; color:var(--green);
+  padding:0 .1em; border-radius:2px;
+}
+
+#panelToggleFloating {
     position: absolute;
+    top: 88px;
+    right: 382px;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #00b65b;
+    color: #fff;
+    cursor: pointer;
+    z-index: 1001;
+    color: lightgrey;
+}
+body.panel-collapsed #panelToggleFloating{
+  right:4px;                 /* quand replié, il glisse sur le bord droit */
+  transform:translateY(-50%);
 }
 
 
 
-
-
-
-
-button#toggleInfoBtn:hover:after, button#toggleInfoBtn:hover:before {
-    background-color: #00753B;
+/* Fond de carte comme avant */
+.leaflet-tile-pane {
+  -webkit-filter: opacity(80%) grayscale(100%);
+  filter: opacity(40%) grayscale(100%);
 }
-/* Styles pour le bouton quand la liste est masquée (croix) */
-.btn-arrow::before, .btn-arrow::after {
-    content: '';
+
+#results thead {
+  position: sticky;  /* pour rester en haut */
+  top: 0;
+  z-index: 2;        /* pour passer au-dessus du body */
+  background: rgba(34, 85, 34, 0.5); /* vert opaque/semi-opaque */
+  backdrop-filter: blur(6px);         /* garde l’effet de flou derrière */
+}
+#results thead th {
+  padding: 8px;
+}
+
+#app { position: relative; }
+
+aside#panel{
+  position:absolute;
+  top:0; right:0; bottom:0;
+  width: var(--panel-width);
+  z-index:1000;
+  transform: translateX(0);
+  transition: transform .35s ease;
+  pointer-events: auto;               /* capte les clics quand visible */
+}
+body.panel-collapsed aside#panel{
+  transform: translateX(100%);        /* sort de l’écran */
+  pointer-events: none;               /* laisse passer les clics vers la carte */
+}
+
+/* Panneau (déjà en place) */
+aside#panel {
+  transform: translateX(0);
+  transition: transform .35s ease;
+}
+body.panel-collapsed aside#panel {
+  transform: translateX(100%);
+}
+
+/* Bouton flottant qui “suit” le panneau */
+#panelToggleFloating {
     position: absolute;
-    background-color: white;
+    top: 87px;
+    right: 4px;
+    transform: translateY(-50%) translateX(0);
+    transition: transform .35s ease;
+    z-index: 1001;
 }
 
-.btn-arrow::before {
-    height: 2px;
-    width: 24px;
-    top: 24px;
+/* Quand le panneau est OUVERT, pousse le bouton vers la gauche 
+   exactement de la largeur du panneau (+ marge si tu veux) */
+body:not(.panel-collapsed) #panelToggleFloating{
+  transform: translateY(-50%) translateX(calc(-1 * var(--panel-width) - 6px));
 }
 
-.btn-arrow::after {
-    width: 2px;
-    height: 24px;
-    left: 24px;
+/* (Optionnel) quand replié, remet-le bien au bord */
+body.panel-collapsed #panelToggleFloating{
+  transform: translateY(-50%) translateX(0);
 }
 
-.btn-arrow {
-    transform: rotate(45deg);
+/* Tooltip custom */
+.leaflet-tooltip.ithea {
+  background: rgba(255, 255, 255, 0.95);
+  color: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  padding: 8px 10px;
 }
 
-/* Styles pour le bouton quand la liste est affichée (flèche) */
-.btn-cross::before {
-    content: 'ᐸ' !important;
-    position: absolute;
-    border: none;
-    display: inline-block;
-    padding-right: 24px;
-    font-size: 18px;
+/* Séparateur bien visible */
+.leaflet-tooltip.ithea .tooltip-sep{
+  display:block;
+  height:1px;
+  background: rgb(196, 196, 196);
+  margin: 6px -2px;        /* déborde légèrement pour aller "bord à bord" */
 }
-
-.btn-cross:hover::before {
-    background-color: white !important;
-}
-
-/* Suppression de l'élément 'after' pour le style flèche */
-.btn-cross::after {
-    content: none;
-}
-
-
-.animated-underline {
-    position: relative;
-    text-decoration: none;
-  }
-  
-  .animated-underline::after {
-    content: '';
-    position: absolute;
-    width: 0;
-    height: 2px; /* Épaisseur de l'underline */
-    bottom: 0; /* Ajustez en fonction de l'espacement désiré par rapport au texte */
-    left: 0;
-    background-color: white; /* Couleur de l'underline */
-    transition: width 0.3s ease 0s; /* Ajustez la vitesse et le type d'animation */
-  }
-  
-  .animated-underline:hover::after {
-    width: 64px;
-    left: 0;
-  }
-
-  .animated-underline:hover::after {
-    width: 64px;
-    left: 0;
-  }
-
-  .animated-underline.selected {
-    position: relative;
-    text-decoration: none;
-  }
-  
-  .animated-underline.selected::after {
-    content: '';
-    position: absolute;
-    width: 0;
-    height: 2px; /* Épaisseur de l'underline */
-    bottom: 0; /* Ajustez en fonction de l'espacement désiré par rapport au texte */
-    left: 0;
-    background-color: white; /* Couleur de l'underline */
-    transition: width 0.3s ease 0s; /* Ajustez la vitesse et le type d'animation */
-  }
-  
-  .animated-underline.selected::after {
-    width: 64px;
-    left: 0;
-  }
-
-  .animated-underline.hover-out::after {
-    width: 0;
-    left: 64px; /* Déplace l'underline vers la droite */
-    transition: width 0.3s ease, left 0.3s ease; /* Assurez-vous que ce délai correspond à la durée de votre animation CSS */
-  }
-
-  div#nombreRefs {
-    font-size: 24px;
-    position: absolute;
-    color: #00753B;
-    left: -180px;
-    font-weight: bold;
-}
-  
-  
-

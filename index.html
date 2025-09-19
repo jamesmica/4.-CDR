@@ -1,65 +1,83 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Carte des références - Ithéa Conseil</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          crossorigin=""/>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.2/proj4.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/shpjs@3"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/dist/turf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mapbox/leaflet-pip@1.1.0/leaflet-pip.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>Carte des références – Ithéa Conseil</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link rel="stylesheet" href="styles.css" />
 
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
+  <!-- Utils -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mapbox/leaflet-pip@1.1.0/leaflet-pip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
 
 </head>
+
 <body>
+  <div id="app">
+    <div id="map"></div>
+    <!-- juste après <div id="map"></div> -->
+<button id="panelToggleFloating" aria-label="Afficher/Masquer les résultats">⟩</button>
 
-    
-    <div id="map" style="height: 100vh; float: left;"></div>
-    <div id="typeFilterContainer">
-        <div id="filter">
-            <!-- <h2>Cliquer sur une région pour filtrer la liste</h2> -->
-                <select id="typeFilter" multiple style="padding: 5px; border: 1px solid #ccc;">
-                    <option value="Tous">Tous</option>
-                    <!-- Les options seront ajoutées dynamiquement -->
-                </select>
-                <h2 class="titre-souligne">NOS INTERVENTIONS</h2>
-                <div id="typeFilterDisplay">
-                    <span class="animated-underline" data-value="ABS">ABS</span>
-                    <span class="animated-underline" data-value="CTG">CTG</span>
-                    <span class="animated-underline" data-value="Autre mission">Autres missions de conseil</span>
-                    <span class="animated-underline" data-value="Achat unique - Profils Thématiques">Achat unique - Profils Thématiques</span>
-                    <span class="animated-underline" data-value="Abonnement - Profils Thématiques">Abonnement - Profils Thématiques</span>
-                    <span class="animated-underline" data-value="Autre outil">Autres outils</span>
-                </div>
-                <hr>
-                <div id="nombreElements"></div>
-                <div id="nombreRefs"></div>
+    <aside id="panel">
+<header class="panel-header">
+  <div class="brand">
+    <h1>Nos interventions</h1>
+    <p class="muted">Carte & liste filtrables</p>
+  </div>
+</header>
 
-            <div id="tFDRow">
-                <button id="resetRegionBtn" onclick="resetRegionFilter()">Réinitialiser ⭯</button>
-                <div id="nombreRef"></div>
-            </div>
+
+      <section class="controls">
+        <div class="search-row">
+          <input id="globalSearch" type="search" placeholder="Rechercher (collectivité, type, région, mots-clés…)" autocomplete="off">
+          <button id="clearSearch" title="Effacer">✕</button>
         </div>
-        <div id="info" style="float: right; overflow: auto;"></div>
-        
-        <button id="toggleInfoBtn"></button>
-    </div>
 
+        <div class="chips" id="chipsTypes">
+          <!-- Tags de types normalisés (rendus dynamiquement) -->
+        </div>
 
+        <div class="scope">
+          <div id="scopeLabel">France</div>
+          <div class="counts">
+            <span id="totalRefs">–</span> références •
+            <span id="visibleCount">–</span> résultats
+          </div>
+          <button id="resetFilters" class="soft">Réinitialiser</button>
+        </div>
+      </section>
 
+      <section id="tableWrap">
+        <table id="results">
+          <thead>
+            <tr>
+              <th style="width:40%">Territoire</th>
+              <th style="width:40%">Type</th>
+              <th style="width:20%">Date</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody">
+            <!-- Lignes rendues dynamiquement -->
+          </tbody>
+        </table>
+        <div id="emptyState" class="hidden">
+          Aucun résultat. Modifiez vos filtres ou la recherche.
+        </div>
+      </section>
+    </aside>
     
-    
-<!-- <div id="donneesGSheet"></div> -->
-<!-- <div id="donneesCSV"></div> -->
-<!-- <div id="resultatsCorrespondance"></div> -->
+  </div>
 
+  <div id="loader" class="loader">
+    <div class="spinner"></div>
+    <div>Chargement des données…</div>
+  </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        crossorigin=""></script>
-<script src="script1.js"></script>
+  <script src="script1.js"></script>
 </body>
 </html>

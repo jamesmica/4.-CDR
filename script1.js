@@ -1,351 +1,725 @@
-const apiKey = 'AIzaSyC2YFqXtmJh4c4jYPwGvPmWnU1iEhGWj0E';
-const sheetId = '1FUhix1FToy_joK8lZuiZvZp6aCeQncByDaFVfPGKU1k';
-const range = 'Feuille 1!A1:J1500';
-const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
-const urlCSV = 'centroides_total.csv';
-var previousSelectedLayer = null; // Conserve une référence à la dernière région sélectionnée
-var geojsonLayer;
-var correspondance;
+/* ===========================
+   Paramètres & constantes
+=========================== */
+const CONFIG = {
+  sheetId: "1FUhix1FToy_joK8lZuiZvZp6aCeQncByDaFVfPGKU1k", // <-- remplace si besoin
+  apiKey:  "AIzaSyC2YFqXtmJh4c4jYPwGvPmWnU1iEhGWj0E",       // <-- remplace si besoin
+  range:   "Feuille 1!A1:J3000",
+  csvPath: "centroides_total.csv",
+  regionsPath: "regions-20180101.json",
 
-var map = L.map('map').setView([46.71109, 1.7191036], 6);
-L.tileLayer('//{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
-    attribution: 'donn&eacute;es &copy; <a href="//osm.org/copyright">OpenStreetMap</a>/ODbL - rendu <a href="//openstreetmap.fr">OSM France</a>'
-}).addTo(map);
+  // Colonnes (noms exacts de l'en-tête Google Sheets)
+  COLS: {
+    Date: "Date",                      // Année (AAAA)
+    Type: "Type",                      // Type brut / semi-normalisé
+    AssociatedCompany: "Associated Company",
+    INSEE: "INSEE",
+    COL: "COL",                        // Couleur (si fournie)
+    NomType: "NomType",                // Sous-type / détail
+    Region: "Region"
+  }
+};
 
-var rowsGSheet; // Données Google Sheets
-var indices; // Indices des colonnes nécessaires
-var dataCSV; // Données du fichier CSV
+/* ===========================
+   État global
+=========================== */
+let map, regionLayer;
+let rows = [];           // lignes GSheet (objets {col:value})
+let centers = [];        // [{INSEE, lat, lon}]
+let activeTypes = new Set(); // types normalisés sélectionnés (chips)
+let totalReferences = 0;
+let searchQuery = "";
+let selectedRegionLayer = null; // couche région sélectionnée (persistante)
+let selectedRegionGeo = null;
+let selectedRegionBuffered = null;
 
-var selectedRegion = null; // Région sélectionnée, null si aucune
-var selectedType = []; // Initialisation comme un tableau vide
-let filteredRows; // Ceci est une variable globale maintenant.
-let currentIndex = 0; // Vous devez initialiser ceci si vous ne l'avez pas déjà fait ailleurs.
-let batchSize = 20; // Vous devez initialiser ceci si vous ne l'avez pas déjà fait ailleurs.
+// Accès rapide markers/lignes
+const markerByRowIdx = new Map();     // rowIndex -> Leaflet marker
+const rowIdxsByLatLon = new Map();    // "lat,lon" -> [rowIndex,...]
 
-document.addEventListener("DOMContentLoaded", () => {
-    var infoDiv = document.getElementById('typeFilterContainer');
-    infoDiv.style.width = "0px";
-    document.getElementById('toggleInfoBtn').classList.add('btn-cross');
+/* ===========================
+   Utils
+=========================== */
+const $  = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-    document.getElementById('toggleInfoBtn').addEventListener('click', function() {
-        
-        
-        if (infoDiv.style.width !== "0px") {
-            requestAnimationFrame(() => {
-                infoDiv.style.width = "0px";
-            });
-            toggleInfoBtn.classList.replace('btn-arrow', 'btn-cross');
-        } else {
-            requestAnimationFrame(() => {
-                infoDiv.style.width = "360px";
-            });
-            toggleInfoBtn.classList.replace('btn-cross', 'btn-arrow');
-        }
-    });
-    
-    
-    init(); // Initialisation et chargement des données
+const normalize = (s) => (s || "")
+  .toString()
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .trim();
 
-    map.on("click", function (event) {
-        var clickedLayers = leafletPip.pointInLayer(event.latlng, geojsonLayer, true);
+const debounce = (fn, wait = 160) => {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+};
 
-        if (clickedLayers.length > 0) {
-            var firstLayer = clickedLayers[0]; // Prendre la première couche trouvée
-            
-            if (firstLayer && firstLayer.feature && firstLayer.fire) {
-                firstLayer.fire('click', {
-                    latlng: event.latlng,
-                    layer: firstLayer
-                });
-
-            }
-        } else {
-            console.log("Aucune couche trouvée sous le point cliqué.");
-        }
-    });
-
-    function init() {
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                const header = data.values[0];
-                rowsGSheet = data.values.slice(1);
-                indices = {
-                    indexAssociatedCompany: header.indexOf('Associated Company'),
-                    indexNomType: header.indexOf('NomType'),
-                    indexType: header.indexOf('Type'),
-                    indexDate: header.indexOf('Date'),
-                    indexCOL: header.indexOf('COL'),
-                    indexCodeInsee: header.indexOf('INSEE'),
-                    indexRegion: header.indexOf('Region')
-                };
-
-                rowsGSheet.sort((a, b) => Number(b[indices.indexDate]) - Number(a[indices.indexDate]));
-
-                const typeFilter = document.getElementById('typeFilter');
-                const types = new Set(data.values.slice(1).map(row => row[indices.indexType]));
-                types.forEach(type => {
-                    if (type) {
-                        typeFilter.innerHTML += `<option value="${type}" selected>${type}</option>`;
-                        selectedType.push(type); // Ajouter chaque type à la liste des types sélectionnés
-                    }
-                });
-
-                return chargerCSV(urlCSV);
-            })
-            .then(dataCSVResult => {
-                dataCSV = dataCSVResult;
-                applyFilters();
-            })
-            .catch(error => console.error('Erreur lors de la récupération des données :', error));
-        
-        document.getElementById('typeFilter').addEventListener('change', function() {
-            selectedType = Array.from(this.selectedOptions).map(option => option.value);
-            console.log('Updated Selected Types:', selectedType); // Ceci devrait afficher les types sélectionnés
-            applyFilters();
-        });
-
-        document.querySelectorAll('#typeFilterDisplay span').forEach(function(span) {
-            span.addEventListener('click', function() {
-                // Toggle la classe 'selected' sur les spans
-                this.classList.toggle('selected');
-        
-                // Récupérer tous les spans sélectionnés
-                var selectedSpans = document.querySelectorAll('#typeFilterDisplay span.selected');
-                var selectedValues = Array.from(selectedSpans).map(span => span.getAttribute('data-value'));
-        
-                console.log("Selected Types: ", selectedValues); // Debugging
-        
-                // Obtenir la référence au <select> caché
-                const selectElement = document.getElementById('typeFilter');
-        
-                // Mettre à jour les options du <select> pour refléter la sélection des spans
-                Array.from(selectElement.options).forEach(option => {
-                    option.selected = selectedValues.includes(option.value);
-                });
-        
-                // Déclencher l'événement 'change' sur le <select> pour appliquer les filtres
-                selectElement.dispatchEvent(new Event('change'));
-            });
-        });
-
-        fetch('./regions-20180101.json')
-            .then(response => response.json())
-            .then(data => {
-                geojsonLayer = L.geoJSON(data, {
-                    style: function(feature) {
-                        return {
-                            color: "#00753B",
-                            weight: 1,
-                            fillColor: "grey",
-                            fillOpacity: 0
-                        };
-                    },
-                    onEachFeature: function(feature, layer) {
-                        layer.on('click', function(e) {
-                            selectedRegion = feature.properties.nom;
-                            if (previousSelectedLayer) {
-                                // Réinitialise le style de la région précédemment sélectionnée
-                                geojsonLayer.resetStyle(previousSelectedLayer);
-                            }
-                            // Change l'épaisseur de la ligne de la région sélectionnée
-                            layer.setStyle({
-                                weight: 3,
-                                fillOpacity: 0
-                            });
-                            previousSelectedLayer = layer;
-                            
-                            applyFilters();
-                        });
-                        layer.on({
-                            mouseover: function(e) {
-                                e.target.setStyle({
-                                    weight: 3,
-                                    fillColor: '#00753B',
-                                    color: '#00753B',
-                                    fillOpacity: 0.01
-                                });
-                            },
-                            mouseout: function(e) {
-                                if (e.target != previousSelectedLayer) {
-                                    geojsonLayer.resetStyle(e.target);
-                                }
-                            }
-                        });
-                    }
-                }).addTo(map);
-            });
-    }
-
-    function chargerCSV(urlCSV) {
-        return fetch(urlCSV)
-            .then(response => response.text())
-            .then(csvText => {
-                return new Promise(resolve => {
-                    Papa.parse(csvText, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: function(results) {
-                            resolve(results.data.map(row => ({
-                                INSEE: row['INSEE'].toString().trim(),
-                                lat: parseFloat(row['lat']),
-                                lon: parseFloat(row['lon'])
-                            })).filter(item => !isNaN(item.lat) && !isNaN(item.lon)));
-                        }
-                    });
-                });
-            });
-    }
-
-    document.querySelectorAll('.animated-underline:not(.selected)').forEach(link => {
-        link.addEventListener('mouseover', () => {
-            link.classList.add('hover');
-        });
-    
-        link.addEventListener('mouseout', () => {
-            // Ajoute temporairement une classe pour gérer l'animation de sortie.
-            link.classList.remove('hover');
-            link.classList.add('hover-out');
-    
-            setTimeout(() => {
-                link.classList.remove('hover-out');
-            }, 300); // Assurez-vous que ce délai correspond à la durée de votre animation CSS.
-        });
-    });
-});
-
-function loadBatch() {
-    let infoTable = document.getElementById('info-table'); // Assurez-vous que c'est l'id de votre tableau
-    for (let i = currentIndex; i < Math.min(filteredRows.length, currentIndex + batchSize); i++) {
-        const row = filteredRows[i];
-        const associatedCompany = row[indices.indexAssociatedCompany];
-        const nomType = row[indices.indexNomType];
-        const date = row[indices.indexDate];
-        let rowHTML = `<tr><td>${associatedCompany}</td><td>${nomType}</td><td>${date}</td></tr>`;
-        infoTable.innerHTML += rowHTML;
-    }
-    currentIndex += batchSize; // Mettre à jour l'index pour le prochain lot
+function tokens(q) {
+  return normalize(q).split(/\s+/).filter(Boolean);
 }
 
-function resetRegionFilter() {
-    selectedRegion = null; // Réinitialise la sélection de la région
-    selectedType = ["Tous"]; // Réinitialise la sélection du type à "Tous"
+function setPanelCollapsed(collapsed){
+  document.body.classList.toggle('panel-collapsed', collapsed);
+  const btn = document.getElementById('panelToggleFloating');
+  if (btn) btn.textContent = collapsed ? '⟨' : '⟩';
+}
 
-    document.querySelectorAll('.selected').forEach(link => {
-        link.classList.remove('selected');
-        link.classList.add('hover-out');
-      
-        setTimeout(() => {
-            link.classList.remove('hover-out');
-        }, 300); // Assurez-vous que ce délai correspond à la durée de votre animation CSS.
+
+function highlight(str, qTokens) {
+  if (!qTokens.length) return (str || "");
+  let out = (str || "").toString();
+  qTokens.forEach(t => {
+    const re = new RegExp(`(${t.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")})`, "ig");
+    out = out.replace(re, "<mark>$1</mark>");
+  });
+  return out;
+}
+
+function markerRadius() {
+  const z = map?.getZoom?.() ?? 6;
+  // Petit scale selon le zoom
+  return Math.max(2, Math.min(7, (z - 5) * 0.8));
+}
+
+/* ===========================
+   Catégorisation
+=========================== */
+
+// Palette
+const COLORS = {
+  "Abonnement - Profils Thématiques": "#1DB5C5",
+  "Achat unique - Profils Thématiques": "#70BA7A",
+  "Profils Thématiques": "#70BA7A",
+  "ABS": "#EE2528",
+  "CTG": "#F38331",
+  "Autres missions de conseil": "#5C368D",
+  "Autres outils": "#F9B832",
+  "Projection effectifs scolaires": "#F9B832",
+  "Diagnostic / Étude": "#5C368D",
+  "Non précisé": "#7F8C8D"
+};
+
+const CHIPS_ORDER = [
+  "ABS",
+  "CTG",
+  "Achat unique - Profils Thématiques",
+  "Abonnement - Profils Thématiques",
+  "Projection effectifs scolaires",
+  "Diagnostic / Étude",
+  "Autres missions de conseil",
+  "Autres outils"
+];
+
+
+// Retourne {cat, sub, color}
+function categorize(typeRaw, nomTypeRaw) {
+  const t = normalize(typeRaw);
+  const n = normalize(nomTypeRaw);
+
+// ABS / CTG (sous-libellé = libellé lisible du NomType/Type)
+if (/\babs\b/.test(t) || /\babs\b/.test(n)) {
+  return { cat: "ABS", sub: friendlyTitle(nomTypeRaw || typeRaw), color: COLORS["ABS"] };
+}
+if (/\bctg\b/.test(t) || /\bctg\b/.test(n) || /conseil\s*transition/.test(t + " " + n)) {
+  return { cat: "CTG", sub: friendlyTitle(nomTypeRaw || typeRaw), color: COLORS["CTG"] };
+}
+
+
+
+// Abonnements / Achats uniques (Profils)
+if (/abonn/.test(t) || /abonn/.test(n)) {
+  return { cat: "Abonnement - Profils Thématiques", sub: subFromProfiles(typeRaw, nomTypeRaw), color: COLORS["Abonnement - Profils Thématiques"] };
+}
+if (/achat\s*unique/.test(t) || /achat\s*unique/.test(n)) {
+  return { cat: "Achat unique - Profils Thématiques", sub: subFromProfiles(typeRaw, nomTypeRaw), color: COLORS["Achat unique - Profils Thématiques"] };
+}
+// Profils thématiques génériques -> ranger avec "Achat unique - Profils Thématiques"
+if (/profil/.test(t) || /profil/.test(n)) {
+  return {
+    cat: "Achat unique - Profils Thématiques",
+    sub: subFromProfiles(typeRaw, nomTypeRaw),
+    color: COLORS["Achat unique - Profils Thématiques"]
+  };
+}
+
+
+
+  // Diagnostics & Projections
+  if (/diagnostic|etude|étude/.test(t + " " + n)) {
+    return { cat: "Diagnostic / Étude", sub: friendlyTitle(nomTypeRaw || typeRaw), color: COLORS["Diagnostic / Étude"] };
+  }
+  if (/projection.*effectifs.*scolaires/.test(t + " " + n)) {
+    return { cat: "Projection effectifs scolaires", sub: "Projection effectifs scolaires", color: COLORS["Projection effectifs scolaires"] };
+  }
+
+  // Outils
+  if (/outil|tableau\s*de\s*bord|portail|plateforme/.test(t + " " + n)) {
+    return { cat: "Autres outils", sub: friendlyTitle(nomTypeRaw || typeRaw), color: COLORS["Autres outils"] };
+  }
+
+  // Autres missions
+  if (/autre\s*mission/.test(t) || /autre\s*mission/.test(n)) {
+    const sub = /projection.*effectifs.*scolaires/.test(t + " " + n)
+      ? "Projection effectifs scolaires"
+      : friendlyTitle(nomTypeRaw || typeRaw);
+    const color = sub === "Projection effectifs scolaires" ? COLORS["Projection effectifs scolaires"] : COLORS["Autres missions de conseil"];
+    return { cat: "Autres missions de conseil", sub, color };
+  }
+
+  // Défaut
+  return { cat: "Autres missions de conseil", sub: friendlyTitle(nomTypeRaw || typeRaw) || "Non précisé", color: COLORS["Autres missions de conseil"] };
+}
+
+function subFromProfiles(typeRaw, nomTypeRaw) {
+  const s = normalize((nomTypeRaw || "") + " " + (typeRaw || ""));
+  const domains = [
+    ["Finances locales", /(finances?\s*locales?)/],
+    ["Logement", /\blogement\b/],
+    ["Jeunesse", /\bjeun(es|esse)\b/],
+    ["Petite enfance", /(petite\s*enfance)/],
+    ["Seniors", /\bseniors?\b/],
+    ["Santé-handicap", /(sant(e|é).?handicap)/],
+    ["Sports", /\bsports?\b/],
+    ["Économie-emploi", /(economie.?emploi|économie.?emploi)/],
+    ["Vie locale", /(vie\s*locale)/],
+    ["Quartier/QPV", /(quartier|qpv)/],
+    ["Revenus-précarité", /(revenus|precarit(e|é))/],
+  ];
+
+  const found = domains.filter(([_, re]) => re.test(s)).map(([label]) => label);
+  if (/petite\s*analyse/.test(s)) found.push("Profil + petite analyse");
+  if (/projection.*effectifs.*scolaires/.test(s)) found.push("Projection effectifs scolaires");
+
+  if (!found.length) return friendlyTitle(nomTypeRaw || typeRaw) || "Profil thématique";
+  return found.join(" • ");
+}
+
+function friendlyTitle(val) {
+  if (!val) return "";
+  return String(val).split(";").map(s => s.trim()).filter(Boolean).join(" • ");
+}
+
+/* ===========================
+   Rendu UI
+=========================== */
+function renderChips(allCats) {
+  const el = $("#chipsTypes");
+  el.innerHTML = "";
+  activeTypes.clear();
+
+  // Respecte l’ordre demandé et n’affiche que les catégories réellement présentes
+  const ordered = CHIPS_ORDER.filter(cat => allCats.has(cat));
+
+  ordered.forEach(cat => {
+    const chip = document.createElement("button");
+    chip.className = "chip active";
+    chip.dataset.value = cat;
+    chip.textContent = cat;
+    chip.style.setProperty("--chip-color", COLORS[cat] || "#00753B");
+
+    chip.addEventListener("click", (e) => {
+      const exclusive = !(e.ctrlKey || e.metaKey); // Ctrl/Cmd = multi
+      if (exclusive) {
+        activeTypes.clear();
+        document.querySelectorAll("#chipsTypes .chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        activeTypes.add(cat);
+      } else {
+        const nowActive = !chip.classList.contains("active");
+        chip.classList.toggle("active", nowActive);
+        if (nowActive) activeTypes.add(cat); else activeTypes.delete(cat);
+        if (!activeTypes.size){
+          // Si on désactive tout, on réactive tout
+          document.querySelectorAll("#chipsTypes .chip").forEach(c => {
+            c.classList.add("active");
+            activeTypes.add(c.dataset.value);
+          });
+        }
+      }
+      applyFilters();
     });
 
-    document.getElementById('typeFilter').value = "Tous"; // Réinitialise la sélection
-    applyFilters(); 
+    el.appendChild(chip);
+    activeTypes.add(cat); // actives par défaut
+  });
+}
 
-    // Réinitialise la vue de la carte à la position et au zoom par défaut
-    map.setView([46.71109, 1.7191036], 6);
+
+function renderTable(filtered, qTokens) {
+  const body = $("#resultsBody");
+  body.innerHTML = "";
+
+  if (!filtered.length) {
+    $("#emptyState").classList.remove("hidden");
+    return;
+  }
+  $("#emptyState").classList.add("hidden");
+
+  const frag = document.createDocumentFragment();
+
+  filtered.forEach((r) => {
+    const tr = document.createElement("tr");
+    tr.dataset.idx = r.__rowIndex;
+
+    const ac = document.createElement("td");
+    const tp = document.createElement("td");
+    const dt = document.createElement("td");
+
+    ac.innerHTML = highlight(r[CONFIG.COLS.AssociatedCompany], qTokens);
+    tp.innerHTML = `<div class="type-pill" style="--pill-color:${r.__color}">${r.__cat}</div><div class="sub">${highlight(r.__sub || "", qTokens)}</div>`;
+    dt.innerHTML = highlight(r[CONFIG.COLS.Date], qTokens);
+
+    tr.appendChild(ac); tr.appendChild(tp); tr.appendChild(dt);
+    tr.addEventListener("click", () => focusRowOnMap(r.__rowIndex));
+    frag.appendChild(tr);
+  });
+
+  body.appendChild(frag);
+}
+
+/* ===========================
+   Carte
+=========================== */
+function initMap() {
+  map = L.map("map", { zoomControl: false }).setView([46.71109, 1.7191036], 6);
+
+  // Fond OSM France (comme avant)
+  L.tileLayer("//{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png", {
+    attribution: 'données © <a href="//osm.org/copyright">OpenStreetMap</a>/ODbL – rendu <a href="//openstreetmap.fr">OSM France</a>'
+  }).addTo(map);
+
+  L.control.zoom({ position: "bottomleft" }).addTo(map);
+
+  // Ajuster le rayon des markers au changement de zoom
+map.on('zoomend', () => {
+  const base = markerRadius();
+  markerByRowIdx.forEach(m => {
+    const cls = m.options.className || '';
+    if (cls.includes('match')) {
+      m.setRadius(base + 2);
+    } else if (cls.includes('dim')) {
+      // même règle que rebuildMarkers (très petit)
+      m.setRadius(Math.max(0.6, base * 0.25));
+    } else {
+      m.setRadius(base);
+    }
+  });
+});
+
+}
+
+function drawRegions(geojson) {
+  regionLayer = L.geoJSON(geojson, {
+    style: () => ({ color: "#0E7C3A", weight: 1, fillColor: "transparent", fillOpacity: 0 }),
+    onEachFeature: (feature, layer) => {
+layer.on("click", () => {
+  selectedRegionLayer = layer;
+  selectedRegionGeo   = layer.toGeoJSON();
+
+  if (window.turf) {
+    selectedRegionBuffered = turf.buffer(selectedRegionGeo, 10, { units: "kilometers" });
+  }
+
+  regionLayer.resetStyle();
+  layer.setStyle({ weight: 3 });
+
+  $("#scopeLabel").textContent = layer.feature?.properties?.nom || "France";
+  applyFilters();
+});
+
+
+
+
+      layer.on("mouseover", () => {
+        if (layer === selectedRegionLayer) return; // ne pas écraser la sélection
+        layer.setStyle({ weight: 3});
+      });
+
+      layer.on("mouseout", () => {
+        if (layer === selectedRegionLayer) return; // ne pas reset la sélection
+        regionLayer.resetStyle(layer);
+      });
+    }
+  }).addTo(map);
+}
+
+function resetRegion(){
+  selectedRegionLayer = null;
+  selectedRegionGeo = null;
+  selectedRegionBuffered = null;
+  if (regionLayer) regionLayer.resetStyle();
+}
+
+
+
+function getCentroidForRow(row) {
+  const code = String(row[CONFIG.COLS.INSEE] || "").trim();
+  if (!code) return null;
+  // UNIQUEMENT depuis le CSV chargé
+  return centers.find(x => x.INSEE === code) || null;
+}
+
+/* ===========================
+   Markers & interactions
+=========================== */
+function buildGroupedTooltip(rowsAtPoint){
+  const sep = '<div class="tooltip-sep" aria-hidden="true"></div>';
+  return rowsAtPoint.map(r => {
+    const title = `<strong>${escapeHtml(r[CONFIG.COLS.AssociatedCompany])}</strong>`;
+    const sub   = escapeHtml(r.__sub || r[CONFIG.COLS.NomType] || r[CONFIG.COLS.Type] || "");
+    const date  = escapeHtml(r[CONFIG.COLS.Date] || "");
+    return `${title}<br>${sub}${date ? `<br>${date}` : ""}`;
+  }).join(sep);
+}
+
+
+// 'shrink' = très petit et pâle
+// 'ghost'  = taille normale mais quasi invisible + non interactif
+// 'hide'   = complètement supprimé de la carte quand une recherche est active
+const NON_MATCH_MODE = 'ghost'; // 'shrink' | 'ghost' | 'hide'
+
+function rebuildMarkers(rowsInScope, qTokens) {
+  // 1) Nettoyage
+  map.eachLayer(layer => { if (layer instanceof L.CircleMarker) map.removeLayer(layer); });
+  markerByRowIdx.clear();
+  rowIdxsByLatLon.clear();
+
+  // 2) Grouper par coordonnée
+  const groups = new Map(); // "lat,lon" -> {lat, lon, rows:[]}
+  for (const r of rowsInScope) {
+    const c = getCentroidForRow(r);
+    if (!c) continue;
+    const key = `${c.lat},${c.lon}`;
+    if (!groups.has(key)) groups.set(key, { lat: c.lat, lon: c.lon, rows: [] });
+    groups.get(key).rows.push(r);
+  }
+
+  // 3) Créer 1 marker par groupe
+  groups.forEach(({ lat, lon, rows: rowsAtPoint }, key) => {
+    const hasQuery = qTokens.length > 0;
+    const anyMatch = hasQuery ? rowsAtPoint.some(r => matchesSearch(r, qTokens)) : true;
+
+    // Comportement pour les non-matchs
+    if (hasQuery && !anyMatch && NON_MATCH_MODE === 'hide') {
+      // Ne pas créer de marker du tout
+      return;
+    }
+
+    // Style
+    const base = markerRadius();
+    let radius, fillOpacity, strokeOpacity, interactive = true, cls = '';
+
+    if (!hasQuery || anyMatch) {
+      radius = base + 2;
+      fillOpacity = 0.95;
+      strokeOpacity = 1;
+      cls = 'match';
+    } else if (NON_MATCH_MODE === 'ghost') {
+      radius = 0.2;                 // taille normale
+      fillOpacity = 0.04;            // quasi invisible
+      strokeOpacity = 0.1;
+      interactive = false;           // pas de hover/clic
+      cls = 'dim ghost';
+    } else { // 'shrink' par défaut
+      radius = Math.max(0.6, base * 0.25); // très petit
+      fillOpacity = 0.15;
+      strokeOpacity = 0.2;
+      cls = 'dim';
+    }
+
+    const color = rowsAtPoint[0].__color;
+    const marker = L.circleMarker([lat, lon], {
+      radius,
+      color,
+      fillColor: color,
+      fillOpacity,
+      opacity: strokeOpacity,
+      className: cls,
+      interactive
+    }).addTo(map);
+
+    // Tooltip fusionné (séparé par un hr léger)
+marker.bindTooltip(buildGroupedTooltip(rowsAtPoint), {
+  direction: 'auto',
+  sticky: true,
+  className: 'ithea'   // <-- correspond au CSS .leaflet-tooltip.ithea
+});
+
+
+    // Clic : focus table (si interactif)
+    if (interactive) {
+      marker.on('click', () => {
+        const firstIdx = rowsAtPoint[0].__rowIndex;
+        focusRowInTable(firstIdx);
+        rowsAtPoint.forEach(r => {
+          const tr = document.querySelector(`tr[data-idx="${r.__rowIndex}"]`);
+          if (tr) { tr.classList.add('row-focus'); setTimeout(() => tr.classList.remove('row-focus'), 900); }
+        });
+      });
+
+      // Survol : surlignage de la région (optionnel)
+      let hoverRegionLayer = null;
+      marker.on('mouseover', () => {
+        if (!regionLayer) return;
+        try {
+          const layers = leafletPip.pointInLayer(marker.getLatLng(), regionLayer, true);
+          if (layers && layers.length) {
+            hoverRegionLayer = layers[0];
+            if (hoverRegionLayer !== selectedRegionLayer) {
+              hoverRegionLayer.setStyle({ weight: 3, fillOpacity: 0.05, color: '#0E7C3A' });
+            }
+          }
+        } catch (_) {}
+      });
+      marker.on('mouseout', () => {
+        if (hoverRegionLayer && hoverRegionLayer !== selectedRegionLayer) regionLayer.resetStyle(hoverRegionLayer);
+        hoverRegionLayer = null;
+      });
+    }
+
+    // Index : tous les rowIndex du groupe pointent vers CE marker
+    rowsAtPoint.forEach(r => markerByRowIdx.set(r.__rowIndex, marker));
+    rowIdxsByLatLon.set(key, rowsAtPoint.map(r => r.__rowIndex));
+  });
+}
+
+
+function focusRowOnMap(rowIndex) {
+  const m = markerByRowIdx.get(rowIndex);
+  if (!m) return;
+  map.flyTo(m.getLatLng(), Math.max(map.getZoom(), 9), { duration: 0.5 });
+  m.openTooltip();
+}
+
+function focusRowInTable(rowIndex) {
+  const tr = document.querySelector(`tr[data-idx="${rowIndex}"]`);
+  if (!tr) return;
+  tr.classList.add("row-focus");
+  tr.scrollIntoView({ block: "center", behavior: "smooth" });
+  setTimeout(() => tr.classList.remove("row-focus"), 900);
+}
+
+/* ===========================
+   Filtres & recherche
+=========================== */
+function matchesType(r) {
+  if (!activeTypes.size) return false;
+  return activeTypes.has(r.__cat);
+}
+
+function isRowInsideSelectedRegion(row){
+  if (!selectedRegionLayer) return true;
+  if (!selectedRegionBuffered) return false;
+
+  const c = getCentroidForRow(row);
+  if (!c) return false;
+
+  const pt = turf.point([c.lon, c.lat]);
+  return turf.booleanPointInPolygon(pt, selectedRegionBuffered);
+}
+
+
+
+
+
+function matchesRegion(r) {
+  return isRowInsideSelectedRegion(r);
+}
+
+function matchesSearch(r, qTokens) {
+  if (!qTokens.length) return true;
+  const hay = normalize([
+    r[CONFIG.COLS.AssociatedCompany],
+    r[CONFIG.COLS.NomType],
+    r[CONFIG.COLS.Type],
+    r[CONFIG.COLS.Region],
+    r[CONFIG.COLS.Date]
+  ].join(" "));
+  return qTokens.every(tok => hay.includes(tok));
 }
 
 function applyFilters() {
-    // Clear all current markers on the map
-    map.eachLayer(function(layer) {
-        if (layer instanceof L.CircleMarker) {
-            map.removeLayer(layer);
-        }
-    });
+  const qTokens = tokens(searchQuery);
 
-    let pointsGroupedByLocation = {};
-    console.log(selectedType);
-    
-    filteredRows = rowsGSheet.filter(row => {
-        const matchesType = selectedType.includes("Tous") || (Array.isArray(selectedType) && selectedType.some(type => type === row[indices.indexType]));
-        const matchesRegion = !selectedRegion || row[indices.indexRegion] === selectedRegion;
-        return matchesType && matchesRegion;
-    });
+  // 1) Portée = types actifs + inclusion géo
+  const scopeRows = rows.filter(r => matchesType(r) && matchesRegion(r));
 
-    console.log('filteredRows : ', filteredRows);
+  // 2) Résultats = portée + recherche
+  const resultRows = scopeRows.filter(r => matchesSearch(r, qTokens));
 
-    let infoHTML = `<table id="info-table"><tr><th>Territoire</th><th>Type</th><th>Date</th></tr>`;
+  // 3) Libellés & compteurs
+  const scopeName = selectedRegionLayer?.feature?.properties?.nom || "France";
+  $("#scopeLabel").textContent = scopeName;
+  $("#totalRefs").textContent = String(totalReferences);
+  $("#visibleCount").textContent = String(resultRows.length);
 
-    filteredRows.forEach(row => {
-        if (row && indices.indexAssociatedCompany !== undefined && indices.indexNomType !== undefined && indices.indexDate !== undefined) {
-            const associatedCompany = row[indices.indexAssociatedCompany] || 'N/A';
-            const nomType = row[indices.indexNomType] || 'N/A';
-            const date = row[indices.indexDate] || 'N/A';
-            infoHTML += `<tr><td>${associatedCompany}</td><td>${nomType}</td><td>${date}</td></tr>`;
-        } else {
-            console.error('Undefined row or index:', row, indices);
-        }
-    });
-    infoHTML += `</table>`;
+  // 4) Rendus
+  renderTable(resultRows, qTokens);
+  rebuildMarkers(scopeRows, qTokens); // la carte montre la portée ; emphasis sur matchs recherche
 
-    document.getElementById('nombreRefs').innerHTML = `${rowsGSheet.length} références`;
+  // 5) Logs utiles
+  const missingAll = rows.filter(r => !getCentroidForRow(r));
+  const missingScope = scopeRows.filter(r => !getCentroidForRow(r));
 
-    if (selectedRegion && selectedType.length > 0) {
-        document.getElementById('nombreElements').innerHTML = `${selectedRegion} > ${selectedType.join(', ')}`;
-    } else if (selectedType.length === 0 && !selectedRegion) {
-        document.getElementById('nombreElements').innerHTML = `France`;
-    } else if (selectedType.length === 0 && selectedRegion) {
-        document.getElementById('nombreElements').innerHTML = `${selectedRegion}`;
-    } else if (selectedType.length > 0 && !selectedRegion) {
-        document.getElementById('nombreElements').innerHTML = `France > ${selectedType.join(', ')}`;
-    }
+//   console.groupCollapsed("[DEBUG] Géolocalisation & filtres");
+//   console.log("Total lignes (GSheet):", rows.length);
+//   console.log("Types actifs:", Array.from(activeTypes));
+//   console.log("Région sélectionnée:", scopeName);
+//   console.log("Dans la portée (type + région):", scopeRows.length);
+//   console.log("Résultats après recherche:", resultRows.length);
 
-    document.getElementById('nombreRef').innerHTML = `${filteredRows.length} résultats`;
+//   console.log("— Points non géolocalisés (TOUS):", missingAll.length);
+//   if (missingAll.length) {
+//     console.table(missingAll.map(r => ({
+//       AssociatedCompany: r[CONFIG.COLS.AssociatedCompany],
+//       INSEE: r[CONFIG.COLS.INSEE],
+//       Type: r[CONFIG.COLS.Type],
+//       NomType: r[CONFIG.COLS.NomType],
+//       Date: r[CONFIG.COLS.Date]
+//     })));
+//   }
 
-    document.getElementById('info').innerHTML = infoHTML;
-    document.getElementById('info').style.height = "calc(-328px + 100vh)";
-
-    const filteredRowsByType = rowsGSheet.filter(row => 
-        selectedType.includes("Tous") || selectedType.includes(row[indices.indexType])
-    );
-
-    console.log(filteredRowsByType);
-
-    filteredRowsByType.forEach(row => {
-        const codeInsee = (row[indices.indexCodeInsee] || '').toString().trim();
-        const correspondance = dataCSV.find(rowCSV => rowCSV.INSEE === codeInsee);
-        if (correspondance) {
-            const key = `${correspondance.lat},${correspondance.lon}`;
-            if (!pointsGroupedByLocation[key]) {
-                pointsGroupedByLocation[key] = {
-                    data: [],
-                    color: row[indices.indexCOL] || 'grey',
-                };
-            }
-            pointsGroupedByLocation[key].data.push(row);
-        }
-    });
-
-    Object.keys(pointsGroupedByLocation).forEach((key) => {
-        const groupData = pointsGroupedByLocation[key].data;
-        const [lat, lon] = key.split(',');
-        const groupColor = pointsGroupedByLocation[key].color;
-
-        let tooltipContent = groupData.map(point => {
-            return `<strong>${point[indices.indexAssociatedCompany]}</strong><br>${point[indices.indexNomType]}<br>${point[indices.indexDate]}`;
-        }).join('<hr>');
-
-        let opacity = 0.5;
-        let opacityBorder = 0.5;
-        groupData.forEach(point => {
-            const isInSelectedRegion = !selectedRegion || point[indices.indexRegion] === selectedRegion;
-            if (isInSelectedRegion) {
-                opacity = 1;
-                opacityBorder = 1;
-            }
-        });
-
-        L.circleMarker([lat, lon], {
-            color: groupColor,
-            fillColor: groupColor,
-            fillOpacity: opacity,
-            opacity: opacityBorder,
-            radius: 5
-        }).addTo(map).bindTooltip(tooltipContent, {
-            permanent: false,
-            direction: 'auto'
-        });
-    });
+//   console.log("— Points non géolocalisés (DANS LA PORTÉE):", missingScope.length);
+//   if (missingScope.length) {
+//     console.table(missingScope.map(r => ({
+//       AssociatedCompany: r[CONFIG.COLS.AssociatedCompany],
+//       INSEE: r[CONFIG.COLS.INSEE],
+//       Type: r[CONFIG.COLS.Type],
+//       NomType: r[CONFIG.COLS.NomType],
+//       Date: r[CONFIG.COLS.Date]
+//     })));
+//   }
+//   console.groupEnd();
 }
+
+/* ===========================
+   Données
+=========================== */
+async function fetchSheet() {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.sheetId}/values/${encodeURIComponent(CONFIG.range)}?key=${CONFIG.apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Erreur de chargement Google Sheets");
+  const json = await res.json();
+  const [header, ...rest] = json.values;
+
+  // Transformer en objets {col:value}
+  const rowsObj = rest.map((arr, idx) => {
+    const obj = {};
+    header.forEach((h, i) => obj[h] = arr[i] ?? "");
+    obj.__rowIndex = idx; // index d’origine
+    return obj;
+  });
+
+  // Trier par Date (numérique décroissant si possible)
+  rowsObj.sort((a, b) => Number(b[CONFIG.COLS.Date]) - Number(a[CONFIG.COLS.Date]));
+
+  return rowsObj;
+}
+
+function fetchCSV(path) {
+  return new Promise((resolve, reject) => {
+    Papa.parse(path, {
+      header: true,
+      skipEmptyLines: true,
+      download: true,
+      complete: (res) => {
+        const cleaned = res.data.map(r => ({
+          INSEE: String(r["INSEE"] || "").trim(),
+          lat: parseFloat(r["lat"]),
+          lon: parseFloat(r["lon"])
+        })).filter(x => !isNaN(x.lat) && !isNaN(x.lon) && x.INSEE);
+        resolve(cleaned);
+      },
+      error: (err) => reject(err)
+    });
+  });
+}
+
+/* ===========================
+   Bootstrap
+=========================== */
+async function init() {
+  $("#loader").classList.remove("hidden");
+
+  initMap();
+  const [geojson, centersData, sheetRows] = await Promise.all([
+    fetch(CONFIG.regionsPath).then(r => r.json()),
+    fetchCSV(CONFIG.csvPath),
+    fetchSheet()
+  ]);
+
+  drawRegions(geojson);
+  centers = centersData;
+  totalReferences = sheetRows.length;
+
+  // Catégoriser & coloriser
+  const categoriesSet = new Set();
+rows = sheetRows.map(r => {
+  const { cat, sub, color } = categorize(r[CONFIG.COLS.Type], r[CONFIG.COLS.NomType]);
+  r.__cat = cat;
+  r.__sub = sub;
+
+  // On ne laisse PAS la colonne COL surcharger ABS/CTG
+  const colFromSheet = String(r[CONFIG.COLS.COL] || "");
+  const isValidHex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(colFromSheet);
+
+  if (cat === "ABS" || cat === "CTG") {
+    r.__color = COLORS[cat]; // verrouille rouge ABS / bleu CTG
+  } else {
+    r.__color = isValidHex ? colFromSheet : (color || "#00753B");
+  }
+
+  categoriesSet.add(cat);
+  return r;
+});
+
+
+  // UI chips
+  renderChips(categoriesSet);
+
+  // Premier rendu
+  applyFilters();
+
+// === Bouton flottant (après que le DOM et la carte soient prêts) ===
+setPanelCollapsed(false); // état initial: panneau ouvert + flèche ⟩
+
+const floatBtn = document.getElementById('panelToggleFloating');
+if (floatBtn){
+  floatBtn.addEventListener('click', () => {
+    const collapsed = document.body.classList.contains('panel-collapsed');
+    setPanelCollapsed(!collapsed);
+  });
+}
+
+  // Réinitialiser
+  $("#resetFilters").addEventListener("click", () => {
+    // Tout réactiver
+    $$("#chipsTypes .chip").forEach(ch => { ch.classList.add("active"); activeTypes.add(ch.dataset.value); });
+    // Recherche & région
+    $("#globalSearch").value = "";
+    searchQuery = "";
+    resetRegion();
+    applyFilters();
+  });
+
+  // Recherche
+  const onSearch = debounce(() => {
+    searchQuery = $("#globalSearch").value || "";
+    applyFilters();
+  }, 180);
+  $("#globalSearch").addEventListener("input", onSearch);
+  $("#clearSearch").addEventListener("click", () => { $("#globalSearch").value = ""; searchQuery = ""; applyFilters(); });
+
+  $("#loader").classList.add("hidden");
+}
+
+// Échappement simple (tooltip)
+function escapeHtml(s) {
+  return (s || "").toString()
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+document.addEventListener("DOMContentLoaded", init);
