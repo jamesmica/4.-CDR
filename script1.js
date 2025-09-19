@@ -493,11 +493,27 @@ function focusRowOnMap(rowIndex) {
 
 function focusRowInTable(rowIndex) {
   const tr = document.querySelector(`tr[data-idx="${rowIndex}"]`);
-  if (!tr) return;
+  const container = document.getElementById('tableWrap'); // le conteneur scrollable de la table
+  if (!tr || !container) return;
+
   tr.classList.add("row-focus");
-  tr.scrollIntoView({ block: "center", behavior: "smooth" });
+
+  // Calcule la position de la ligne dans le conteneur et centre-la
+  const cRect = container.getBoundingClientRect();
+  const rRect = tr.getBoundingClientRect();
+  const delta = rRect.top - cRect.top; // distance visible entre la ligne et le haut du container
+  const targetTop = container.scrollTop + delta - (container.clientHeight / 2 - tr.clientHeight / 2);
+
+  // Scroll "smooth" du container (et surtout pas de la fenêtre/parent)
+  if (typeof container.scrollTo === "function") {
+    container.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  } else {
+    container.scrollTop = Math.max(0, targetTop);
+  }
+
   setTimeout(() => tr.classList.remove("row-focus"), 900);
 }
+
 
 /* ===========================
    Filtres & recherche

@@ -321,3 +321,8 @@ body.panel-collapsed #panelToggleFloating{
   background: rgb(196, 196, 196);
   margin: 6px -2px;        /* déborde légèrement pour aller "bord à bord" */
 }
+
+#tableWrap{
+  overflow: auto;
+  overscroll-behavior: contain; /* stoppe le scroll chaining vers l'iframe/parent */
+}
