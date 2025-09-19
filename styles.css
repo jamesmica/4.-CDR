@@ -65,6 +65,7 @@ body.panel-collapsed aside#panel{ transform: translateX(100%) }
   border:1px solid var(--border);
   background: rgba(0, 0, 0, 0.623);
   color:#fff; cursor:pointer; z-index:1001;
+  font-weight: bold !important;
 }
 /* Quand replié, il vient au bord droit de l’écran */
 body.panel-collapsed #panelToggleFloating{
@@ -234,7 +235,6 @@ mark{
     color: #fff;
     cursor: pointer;
     z-index: 1001;
-    color: lightgrey;
 }
 body.panel-collapsed #panelToggleFloating{
   right:4px;                 /* quand replié, il glisse sur le bord droit */
@@ -349,3 +349,36 @@ body.panel-collapsed #panelToggleFloating{
   -webkit-appearance: none;
   appearance: none;
 }
+
+/* Loupe dans le champ */
+#globalSearch{
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e9f3ee' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>\
+<circle cx='11' cy='11' r='7'/>\
+<line x1='21' y1='21' x2='16.65' y2='16.65'/>\
+</svg>");
+  background-repeat: no-repeat;
+  background-position: 12px 50%;
+  background-size: 16px 16px;
+  padding-left: 36px; /* laisse la place à la loupe */
+}
+
+
+/* si tu avais une icône via ::before, on la neutralise */
+.soft.icon-only::before{ content:none !important; }
+
+.soft.icon-only{
+  width:36px; height:36px; padding:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:8px; line-height:0;
+  color:#fff;            /* la couleur de l'icône suit currentColor */
+}
+
+.icon-refresh-jam{
+  width:18px; height:18px; display:block; /* ajuste si tu veux plus grand */
+  transition: transform .2s ease;
+}
+.soft.icon-only:hover .icon-refresh-jam{ transform: rotate(15deg); }
+.soft.icon-only:active .icon-refresh-jam{ animation: spin .5s linear; }
+@keyframes spin{ to { transform: rotate(360deg); } }
+

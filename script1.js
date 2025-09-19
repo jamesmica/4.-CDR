@@ -725,7 +725,6 @@ if (floatBtn){
     applyFilters();
   }, 180);
   $("#globalSearch").addEventListener("input", onSearch);
-  $("#clearSearch").addEventListener("click", () => { $("#globalSearch").value = ""; searchQuery = ""; applyFilters(); });
 
   $("#loader").classList.add("hidden");
 }
