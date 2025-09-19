@@ -3,9 +3,8 @@
 =========================== */
 const CONFIG = {
   sheetId: "1FUhix1FToy_joK8lZuiZvZp6aCeQncByDaFVfPGKU1k", // <-- remplace si besoin
-  apiKey:  "AIzaSyC2YFqXtmJh4c4jYPwGvPmWnU1iEhGWj0E",       // <-- remplace si besoin
-  range:   "Feuille 1!A1:J3000",
   csvPath: "centroides_total.csv",
+  sheetGid: "0", 
   regionsPath: "regions-20180101.json",
 
   // Colonnes (noms exacts de l'en-tête Google Sheets)
@@ -597,25 +596,26 @@ function applyFilters() {
    Données
 =========================== */
 async function fetchSheet() {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.sheetId}/values/${encodeURIComponent(CONFIG.range)}?key=${CONFIG.apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Erreur de chargement Google Sheets");
-  const json = await res.json();
-  const [header, ...rest] = json.values;
+  // URL "Publier sur le Web" (CSV) – pas besoin de clé d'API
+  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/pub?gid=${CONFIG.sheetGid}&single=true&output=csv`;
 
-  // Transformer en objets {col:value}
-  const rowsObj = rest.map((arr, idx) => {
-    const obj = {};
-    header.forEach((h, i) => obj[h] = arr[i] ?? "");
-    obj.__rowIndex = idx; // index d’origine
-    return obj;
+  return new Promise((resolve, reject) => {
+    Papa.parse(url, {
+      header: true,
+      skipEmptyLines: true,
+      download: true,
+      complete: (res) => {
+        // res.data = [{Date:"...", Type:"...", ...}, ...] avec les entêtes exactes
+        const rowsObj = res.data.map((obj, idx) => ({ ...obj, __rowIndex: idx }));
+        // Tri décroissant par Date (si c'est une année AAAA)
+        rowsObj.sort((a, b) => Number(b[CONFIG.COLS.Date]) - Number(a[CONFIG.COLS.Date]));
+        resolve(rowsObj);
+      },
+      error: reject
+    });
   });
-
-  // Trier par Date (numérique décroissant si possible)
-  rowsObj.sort((a, b) => Number(b[CONFIG.COLS.Date]) - Number(a[CONFIG.COLS.Date]));
-
-  return rowsObj;
 }
+
 
 function fetchCSV(path) {
   return new Promise((resolve, reject) => {
