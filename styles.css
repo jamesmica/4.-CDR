@@ -326,3 +326,26 @@ body.panel-collapsed #panelToggleFloating{
   overflow: auto;
   overscroll-behavior: contain; /* stoppe le scroll chaining vers l'iframe/parent */
 }
+
+
+/* cache la croix native des inputs type=search (Chrome/Safari/Edge) */
+#globalSearch::-webkit-search-cancel-button,
+#globalSearch::-webkit-search-decoration{
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+/* vieux Edge/IE */
+#globalSearch::-ms-clear,
+#globalSearch::-ms-reveal{
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* optionnel : neutralise le style "search" */
+#globalSearch{
+  -webkit-appearance: none;
+  appearance: none;
+}
