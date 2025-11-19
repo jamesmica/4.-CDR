@@ -1,84 +1,93 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Carte des références - Ithéa Conseil</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          crossorigin=""/>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.2/proj4.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/shpjs@3"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/dist/turf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mapbox/leaflet-pip@1.1.0/leaflet-pip.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>Carte des références – Ithéa Conseil</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link rel="stylesheet" href="styles.css" />
 
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 
+  <!-- Utils -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mapbox/leaflet-pip@1.1.0/leaflet-pip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
 
 </head>
+
 <body>
+  <div id="app">
+    <div id="map"></div>
+    <!-- juste après <div id="map"></div> -->
+<button id="panelToggleFloating" aria-label="Afficher/Masquer les résultats">⟩</button>
 
-    
-    <div id="map" style="height: 100vh; float: left;"></div>
-    <div id="typeFilterContainer">
-        <div id="filter">
-            <!-- <h2>Cliquer sur une région pour filtrer la liste</h2> -->
-                <select id="typeFilter" style="padding: 5px; border: 1px solid #ccc;">
-                    <div>
-                    <option value="Tous">Tous</option>
-                    <!-- Les options seront ajoutées dynamiquement -->
-                </div>
-                </select>
-                <h2 class="titre-souligne">NOS INTERVENTIONS</h2>
-                <div id="typeFilterDisplay">
-                    <span data-value="ABS">ABS</span>
-                    <span data-value="CTG">CTG</span>
-                    <span data-value="Achat unique - Profil Croisé">Achat unique - Profil Croisé</span>
-                    <span data-value="Abonnement - Profil Croisé">Abonnement - Profil Croisé</span>
-                    <span data-value="Autre mission">Autre mission de conseil</span>
-                </div>
-                <script>
-                    document.querySelectorAll('#typeFilterDisplay span').forEach(function(span) {
-                        span.addEventListener('click', function() {
-                            // Supprimer la classe selected de tous les éléments
-                            document.querySelectorAll('#typeFilterDisplay span').forEach(function(span) {
-                                span.classList.remove('selected');
-                            });
-                            
-                            // Ajouter la classe selected à l'élément cliqué
-                            this.classList.add('selected');
-                            
-                            // Mettre à jour la valeur du select caché
-                            var value = this.getAttribute('data-value');
-                            document.querySelector('#typeFilter').value = value;
-                            
-                            // Déclencher l'événement change si nécessaire
-                            document.querySelector('#typeFilter').dispatchEvent(new Event('change'));
-                        });
-                    });
+    <aside id="panel">
+<header class="panel-header">
+  <div class="brand">
+    <h1>Nos interventions</h1>
+  </div>
+</header>
 
 
-                </script>
-            <div id="tFDRow">
-                <button id="resetRegionBtn" onclick="resetRegionFilter()">Réinitialiser ⭯</button>
-                <div id="nombreRef"></div>
-            </div>
+      <section class="controls">
+        <div class="search-row">
+          <input id="globalSearch" type="search" placeholder="Rechercher (collectivité, mots-clés…)" autocomplete="off">
+<button id="resetFilters"
+        class="soft icon-only"
+        aria-label="Réinitialiser les filtres"
+        title="Réinitialiser">
+  <svg class="icon-refresh-jam" viewBox="-1.5 -2.5 24 24" aria-hidden="true" focusable="false">
+    <path fill="currentColor"
+      d="M17.83 4.194l.42-1.377a1 1 0 1 1 1.913.585l-1.17 3.825a1 1 0 0 1-1.248.664l-3.825-1.17a1 1 0 1 1 .585-1.912l1.672.511A7.381 7.381 0 0 0 3.185 6.584l-.26.633a1 1 0 1 1-1.85-.758l.26-.633A9.381 9.381 0 0 1 17.83 4.194zM2.308 14.807l-.327 1.311a1 1 0 1 1-1.94-.484l.967-3.88a1 1 0 0 1 1.265-.716l3.828.954a1 1 0 0 1-.484 1.941l-1.786-.445a7.384 7.384 0 0 0 13.216-1.792 1 1 0 1 1 1.906.608 9.381 9.381 0 0 1-5.38 5.831 9.386 9.386 0 0 1-11.265-3.328z"/>
+  </svg>
+</button>
+
+
+
+
         </div>
-        <div id="info" style="float: right; overflow: auto;"></div>
-        <div id="nombreElements"></div>
-        <button id="toggleInfoBtn"></button>
-    </div>
 
+        <div class="chips" id="chipsTypes">
+          <!-- Tags de types normalisés (rendus dynamiquement) -->
+        </div>
 
+        <div class="scope">
+          <div id="scopeLabel">France</div>
+          <div class="counts">
+            <span id="totalRefs">–</span> références •
+            <span id="visibleCount">–</span> résultats
+          </div>
+        </div>
+      </section>
 
+      <section id="tableWrap">
+        <table id="results">
+          <thead>
+            <tr>
+              <th style="width:40%">Territoire</th>
+              <th style="width:40%">Type</th>
+              <th style="width:20%">Date</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody">
+            <!-- Lignes rendues dynamiquement -->
+          </tbody>
+        </table>
+        <div id="emptyState" class="hidden">
+          Aucun résultat. Modifiez vos filtres ou la recherche.
+        </div>
+      </section>
+    </aside>
     
-    
-<!-- <div id="donneesGSheet"></div> -->
-<!-- <div id="donneesCSV"></div> -->
-<!-- <div id="resultatsCorrespondance"></div> -->
+  </div>
 
+  <div id="loader" class="loader">
+    <div class="spinner"></div>
+    <div>Chargement des données…</div>
+  </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        crossorigin=""></script>
-<script src="script1.js"></script>
+  <script src="script1.js"></script>
 </body>
 </html>
