@@ -13,6 +13,7 @@ const CONFIG = {
     Type: "Type",                      // Type brut / semi-normalisé
     AssociatedCompany: "Associated Company",
     INSEE: "INSEE",
+    EPCICOM: "EPCICOM",           // code insee intercommunalité ou commune
     COL: "COL",                        // Couleur (si fournie)
     NomType: "NomType",                // Sous-type / détail
     Region: "Region"
@@ -265,7 +266,14 @@ function renderTable(filtered, qTokens) {
     const tp = document.createElement("td");
     const dt = document.createElement("td");
 
-    ac.innerHTML = highlight(r[CONFIG.COLS.AssociatedCompany], qTokens);
+    const territoryName = highlight(r[CONFIG.COLS.AssociatedCompany], qTokens);
+    const inseeCode = r[CONFIG.COLS.EPCICOM] || r[CONFIG.COLS.INSEE] || "";
+    const inseeHtml = inseeCode
+      ? `<div class="territory-meta">${highlight(inseeCode, qTokens)}</div>`
+      : "";
+
+    ac.innerHTML = `${territoryName}${inseeHtml}`;
+
     tp.innerHTML = `<div class="type-pill" style="--pill-color:${r.__color}">${r.__cat}</div><div class="sub">${highlight(r.__sub || "", qTokens)}</div>`;
     dt.innerHTML = highlight(r[CONFIG.COLS.Date], qTokens);
 
@@ -549,6 +557,7 @@ function matchesSearch(r, qTokens) {
     r[CONFIG.COLS.NomType],
     r[CONFIG.COLS.Type],
     r[CONFIG.COLS.Region],
+    r[CONFIG.COLS.EPCICOM],   // <--- AJOUT
     r[CONFIG.COLS.Date]
   ].join(" "));
   return qTokens.every(tok => hay.includes(tok));
