@@ -10,8 +10,10 @@
   --chip:#1b6a40;
   --chip-active:#2ea76b;
   --shadow:0 10px 30px rgba(0,0,0,.25);
-  --panel-width: 380px; /* une seule source de vérité */
+  --panel-width: 560px; /* une seule source de vérité */
 }
+
+
 
 *{ box-sizing:border-box }
 
@@ -44,6 +46,7 @@ aside#panel{
   position:absolute;
   top:0; right:0; bottom:0;
   width: var(--panel-width);
+  max-width: 80%;
   background:linear-gradient(180deg, var(--panel) 0%, var(--green) 100%);
   border-left:3px solid #fff;
   box-shadow: var(--shadow);
@@ -125,13 +128,10 @@ body.panel-collapsed #togglePanel{ transform:rotate(180deg) }
   border:none; border-radius:999px; padding:6px 10px;
   background: var(--chip);
   color:#fff; cursor:pointer;
-  outline:2px solid rgba(255,255,255,.18);
-  box-shadow:0 2px 0 rgba(0,0,0,.15) inset;
   transition: all .15s ease;
 }
 .chip.active{
   background: var(--chip-active);
-  outline:2px solid var(--text);
 }
 .chip:hover{
   transform: translateY(-1px);
@@ -188,7 +188,7 @@ tbody tr.row-focus td{ background: rgba(255,255,255,.13) }
 
 .type-pill{
   display:inline-block; font-size:12px; font-weight:700; letter-spacing:.2px;
-  padding:8px 16px; border-radius:999px; color:#fff;
+  padding:8px 16px; border-radius:2px; color:#fff;
   background: var(--pill-color, #1f8a70);
   margin-bottom:4px;
 }
@@ -274,6 +274,7 @@ aside#panel{
   position:absolute;
   top:0; right:0; bottom:0;
   width: var(--panel-width);
+  max-width: 80%;
   z-index:1000;
   transform: translateX(0);
   transition: transform .35s ease;
@@ -349,10 +350,44 @@ table{
   table-layout: fixed;    /* colonnes à largeur fixe */
 }
 
-#results th,
-#results td{
-  word-break: break-word; /* évite qu’un mot trop long force la largeur */
+/* Barre des 2 grandes familles */
+.chip-mainbar{
+  display:flex;
+  margin-top:10px;
+  margin-bottom:6px;
+  width: 100%;
 }
+
+.chip-main{
+  flex:1;
+  padding:8px 10px;
+  border:1px solid rgba(255,255,255,.35);
+  background:rgba(255,255,255,.06);
+  color:var(--muted);
+  font-weight:600;
+  font-size:13px;
+  cursor:pointer;
+  text-align:center;
+  white-space:normal;
+}
+
+.chip-main:hover{
+  background:rgba(255,255,255,.16);
+}
+
+.chip-main.active{
+  background:var(--chip-active);
+  color:#fff;
+  border-color:#fff;
+}
+
+/* Ligne de sous-chips */
+.chip-subrow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
 
 /* cache la croix native des inputs type=search (Chrome/Safari/Edge) */
 #globalSearch::-webkit-search-cancel-button,
@@ -408,3 +443,9 @@ table{
 .soft.icon-only:active .icon-refresh-jam{ animation: spin .5s linear; }
 @keyframes spin{ to { transform: rotate(360deg); } }
 
+@media (max-width: 800px){
+
+  body:not(.panel-collapsed) #panelToggleFloating{
+    transform: translateY(-50%) translateX(calc(-1 * 80vw - 6px));
+  }
+}

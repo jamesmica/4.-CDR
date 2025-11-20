@@ -27,11 +27,12 @@ let map, regionLayer;
 let rows = [];           // lignes GSheet (objets {col:value})
 let centers = [];        // [{INSEE, lat, lon}]
 let activeTypes = new Set(); // types normalisés sélectionnés (chips)
-let totalReferences = 0;
 let searchQuery = "";
 let selectedRegionLayer = null; // couche région sélectionnée (persistante)
 let selectedRegionGeo = null;
 let selectedRegionBuffered = null;
+let activeGroupLabel = null;          // famille actuellement affichée
+let availableCatsByGroup = new Map(); // label -> sous-catégories présentes
 
 // Accès rapide markers/lignes
 const markerByRowIdx = new Map();     // rowIndex -> Leaflet marker
@@ -92,11 +93,11 @@ const COLORS = {
   "Achat unique - Profils Thématiques": "#70BA7A",
   "Profils Thématiques": "#70BA7A",
   "ABS": "#EE2528",
-  "CTG": "#F38331",
-  "Autres missions de conseil": "#5C368D",
-  "Autres outils": "#F9B832",
+  "CTG": "#5C368D",
+  "Autres Études / Stratégies": "#95235B",
+  "Fiche QPV": "#F9B832",
   "Projection effectifs scolaires": "#F9B832",
-  "Diagnostic / Étude": "#5C368D",
+  "Diagnostic petite enfance/SPPE": "#F38331",
   "Non précisé": "#7F8C8D"
 };
 
@@ -106,70 +107,130 @@ const CHIPS_ORDER = [
   "Achat unique - Profils Thématiques",
   "Abonnement - Profils Thématiques",
   "Projection effectifs scolaires",
-  "Diagnostic / Étude",
-  "Autres missions de conseil",
-  "Autres outils"
+  "Diagnostic petite enfance/SPPE",
+  "Autres Études / Stratégies",
+  "Fiche QPV"
 ];
+
+const CHIP_GROUPS = [
+  {
+    label: "Outils statistiques",
+    cats: [
+      "Achat unique - Profils Thématiques",
+      "Abonnement - Profils Thématiques",
+      "Fiche QPV"
+    ]
+  },
+  {
+    label: "Diagnostics / Études / Stratégies",
+    cats: [
+      "ABS",
+      "CTG",
+      "Diagnostic petite enfance/SPPE",
+      "Projection effectifs scolaires",
+      "Autres Études / Stratégies"
+    ]
+  }
+];
+
 
 
 // Retourne {cat, sub, color}
 function categorize(typeRaw, nomTypeRaw) {
   const t = normalize(typeRaw);
   const n = normalize(nomTypeRaw);
+  const combined = `${t} ${n}`;
 
-// ABS / CTG (sous-libellé = libellé lisible du NomType/Type)
-if (/\babs\b/.test(t) || /\babs\b/.test(n)) {
-  return { cat: "ABS", sub: friendlyTitle(nomTypeRaw || typeRaw), color: COLORS["ABS"] };
-}
-if (/\bctg\b/.test(t) || /\bctg\b/.test(n) || /conseil\s*transition/.test(t + " " + n)) {
-  return { cat: "CTG", sub: friendlyTitle(nomTypeRaw || typeRaw), color: COLORS["CTG"] };
-}
+  // Petits helpers pour éviter de répéter les regex
+  const hasDiagEtude = /\b(diagnostic|etude)\b/.test(combined);
+  const hasPetiteEnfance = /petite[\s\-]*enfance/.test(combined);
 
+  // ABS / CTG (sous-libellé = libellé lisible du NomType/Type)
+  if (/\babs\b/.test(t) || /\babs\b/.test(n)) {
+    return { cat: "ABS", sub: friendlyTitle(nomTypeRaw || typeRaw), color: COLORS["ABS"] };
+  }
+  if (/\bctg\b/.test(t) || /\bctg\b/.test(n) || /conseil\s*transition/.test(combined)) {
+    return { cat: "CTG", sub: friendlyTitle(nomTypeRaw || typeRaw), color: COLORS["CTG"] };
+  }
 
+  // Abonnements / Achats uniques (Profils)
+  if (/abonn/.test(t) || /abonn/.test(n)) {
+    return {
+      cat: "Abonnement - Profils Thématiques",
+      sub: subFromProfiles(typeRaw, nomTypeRaw),
+      color: COLORS["Abonnement - Profils Thématiques"]
+    };
+  }
+  if (/achat\s*unique/.test(t) || /achat\s*unique/.test(n)) {
+    return {
+      cat: "Achat unique - Profils Thématiques",
+      sub: subFromProfiles(typeRaw, nomTypeRaw),
+      color: COLORS["Achat unique - Profils Thématiques"]
+    };
+  }
+  // Profils thématiques génériques -> ranger avec "Achat unique - Profils Thématiques"
+  if (/profil/.test(t) || /profil/.test(n)) {
+    return {
+      cat: "Achat unique - Profils Thématiques",
+      sub: subFromProfiles(typeRaw, nomTypeRaw),
+      color: COLORS["Achat unique - Profils Thématiques"]
+    };
+  }
 
-// Abonnements / Achats uniques (Profils)
-if (/abonn/.test(t) || /abonn/.test(n)) {
-  return { cat: "Abonnement - Profils Thématiques", sub: subFromProfiles(typeRaw, nomTypeRaw), color: COLORS["Abonnement - Profils Thématiques"] };
-}
-if (/achat\s*unique/.test(t) || /achat\s*unique/.test(n)) {
-  return { cat: "Achat unique - Profils Thématiques", sub: subFromProfiles(typeRaw, nomTypeRaw), color: COLORS["Achat unique - Profils Thématiques"] };
-}
-// Profils thématiques génériques -> ranger avec "Achat unique - Profils Thématiques"
-if (/profil/.test(t) || /profil/.test(n)) {
-  return {
-    cat: "Achat unique - Profils Thématiques",
-    sub: subFromProfiles(typeRaw, nomTypeRaw),
-    color: COLORS["Achat unique - Profils Thématiques"]
-  };
-}
-
-
+    if (/budget\s*croise/.test(combined)) { // "croisé" devient "croise" après normalize()
+    return {
+      cat: "Achat unique - Profils Thématiques",
+      sub: "Budget croisé",
+      color: COLORS["Achat unique - Profils Thématiques"]
+    };
+  }
 
   // Diagnostics & Projections
-  if (/diagnostic|etude|étude/.test(t + " " + n)) {
-    return { cat: "Diagnostic / Étude", sub: friendlyTitle(nomTypeRaw || typeRaw), color: COLORS["Diagnostic / Étude"] };
+  // 👉 Désormais SEULEMENT les diagnostics/études qui parlent de petite enfance
+  if (hasDiagEtude && hasPetiteEnfance) {
+    return {
+      cat: "Diagnostic petite enfance/SPPE",
+      sub: friendlyTitle(nomTypeRaw || typeRaw),
+      color: COLORS["Diagnostic petite enfance/SPPE"]
+    };
   }
-  if (/projection.*effectifs.*scolaires/.test(t + " " + n)) {
-    return { cat: "Projection effectifs scolaires", sub: "Projection effectifs scolaires", color: COLORS["Projection effectifs scolaires"] };
+
+  if (/projection.*effectifs.*scolaires/.test(combined)) {
+    return {
+      cat: "Projection effectifs scolaires",
+      sub: "Projection effectifs scolaires",
+      color: COLORS["Projection effectifs scolaires"]
+    };
   }
 
   // Outils
-  if (/outil|tableau\s*de\s*bord|portail|plateforme/.test(t + " " + n)) {
-    return { cat: "Autres outils", sub: friendlyTitle(nomTypeRaw || typeRaw), color: COLORS["Autres outils"] };
+  if (/fich(e|es)\s*QPV/.test(t) || /fich(e|es)\s*qpv/.test(n)) {
+    return {
+      cat: "Fiche QPV",
+      sub: friendlyTitle(nomTypeRaw || typeRaw),
+      color: COLORS["Fiche QPV"]
+    };
   }
 
   // Autres missions
   if (/autre\s*mission/.test(t) || /autre\s*mission/.test(n)) {
-    const sub = /projection.*effectifs.*scolaires/.test(t + " " + n)
+    const sub = /projection.*effectifs.*scolaires/.test(combined)
       ? "Projection effectifs scolaires"
       : friendlyTitle(nomTypeRaw || typeRaw);
-    const color = sub === "Projection effectifs scolaires" ? COLORS["Projection effectifs scolaires"] : COLORS["Autres missions de conseil"];
-    return { cat: "Autres missions de conseil", sub, color };
+    const color = sub === "Projection effectifs scolaires"
+      ? COLORS["Projection effectifs scolaires"]
+      : COLORS["Autres Études / Stratégies"];
+    return { cat: "Autres Études / Stratégies", sub, color };
   }
 
-  // Défaut
-  return { cat: "Autres missions de conseil", sub: friendlyTitle(nomTypeRaw || typeRaw) || "Non précisé", color: COLORS["Autres missions de conseil"] };
+  // Défaut : tout ce qui n’est pas explicitement géré ci-dessus
+  return {
+    cat: "Autres Études / Stratégies",
+    sub: friendlyTitle(nomTypeRaw || typeRaw) || "Non précisé",
+    color: COLORS["Autres Études / Stratégies"]
+  };
 }
+
 
 function subFromProfiles(typeRaw, nomTypeRaw) {
   const s = normalize((nomTypeRaw || "") + " " + (typeRaw || ""));
@@ -200,50 +261,141 @@ function friendlyTitle(val) {
   return String(val).split(";").map(s => s.trim()).filter(Boolean).join(" • ");
 }
 
+
 /* ===========================
    Rendu UI
 =========================== */
-function renderChips(allCats) {
-  const el = $("#chipsTypes");
-  el.innerHTML = "";
+
+function setActiveGroupTab(groupLabel, { apply = true } = {}) {
+  if (!availableCatsByGroup.size) return;
+
+  if (groupLabel && !availableCatsByGroup.has(groupLabel)) {
+    groupLabel = Array.from(availableCatsByGroup.keys())[0];
+  }
+
+  activeGroupLabel = groupLabel;
+
+  // si groupLabel == null → aucune chip-main active
+  $$("#chipsTypes .chip-main").forEach(btn => {
+    btn.classList.toggle("active", groupLabel && btn.dataset.group === groupLabel);
+  });
+
+  const subRow = $("#chipsSubRow");
+  if (!subRow) return;
+
+  subRow.innerHTML = "";
   activeTypes.clear();
 
-  // Respecte l’ordre demandé et n’affiche que les catégories réellement présentes
-  const ordered = CHIPS_ORDER.filter(cat => allCats.has(cat));
+  if (!groupLabel) {
+    // aucun groupe → pas de sous-chips, pas de filtre type
+    if (apply) applyFilters();
+    return;
+  }
 
-  ordered.forEach(cat => {
-    const chip = document.createElement("button");
-    chip.className = "chip active";
-    chip.dataset.value = cat;
-    chip.textContent = cat;
-    chip.style.setProperty("--chip-color", COLORS[cat] || "#00753B");
+  const cats = availableCatsByGroup.get(groupLabel) || [];
+  cats.forEach(cat => {
+    activeTypes.add(cat);
 
-    chip.addEventListener("click", (e) => {
-      const exclusive = !(e.ctrlKey || e.metaKey); // Ctrl/Cmd = multi
-      if (exclusive) {
+    const sub = document.createElement("button");
+    sub.className = "chip chip-sub active";
+    sub.dataset.value = cat;
+    sub.textContent = cat;
+    sub.style.setProperty("--chip-color", COLORS[cat] || "#00753B");
+
+    sub.addEventListener("click", () => setActiveSubCategory(cat));
+
+    subRow.appendChild(sub);
+  });
+
+  if (apply) applyFilters();
+}
+
+
+
+function setActiveSubCategory(cat) {
+  // un seul sous-type actif
+  activeTypes.clear();
+  activeTypes.add(cat);
+
+  // activer le bon gros bouton
+  const parentGroup = CHIP_GROUPS.find(g => g.cats.includes(cat));
+  if (parentGroup) {
+    activeGroupLabel = parentGroup.label;
+    $$("#chipsTypes .chip-main").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.group === activeGroupLabel);
+    });
+  }
+
+  // état visuel des sous-chips
+  $$("#chipsSubRow .chip-sub").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.value === cat);
+  });
+
+  applyFilters();
+}
+
+
+function renderChips(allCats) {
+  const container = $("#chipsTypes");
+  container.innerHTML = "";
+  activeTypes.clear();
+  availableCatsByGroup.clear();
+
+  // --- barre des 2 grandes familles ---
+  const mainBar = document.createElement("div");
+  mainBar.className = "chip-mainbar";
+
+  CHIP_GROUPS.forEach(group => {
+    const presentCats = group.cats.filter(cat => allCats.has(cat));
+    if (!presentCats.length) return;
+
+    availableCatsByGroup.set(group.label, presentCats);
+
+    const btn = document.createElement("button");
+    btn.className = "chip-main";
+    btn.textContent = group.label;
+    btn.dataset.group = group.label;
+
+    // 🔁 Toggle : clic = active / désactive
+    btn.addEventListener("click", () => {
+      if (activeGroupLabel === group.label) {
+        // 👉 le groupe était actif → on le désactive
+        activeGroupLabel = null;
         activeTypes.clear();
-        document.querySelectorAll("#chipsTypes .chip").forEach(c => c.classList.remove("active"));
-        chip.classList.add("active");
-        activeTypes.add(cat);
+
+        // visuel : plus aucune chip-main active
+        $$("#chipsTypes .chip-main").forEach(b => b.classList.remove("active"));
+
+        // on vide les sous-chips
+        const subRow = $("#chipsSubRow");
+        if (subRow) subRow.innerHTML = "";
+
+        // plus de filtre de type → on voit tout
+        applyFilters();
       } else {
-        const nowActive = !chip.classList.contains("active");
-        chip.classList.toggle("active", nowActive);
-        if (nowActive) activeTypes.add(cat); else activeTypes.delete(cat);
-        if (!activeTypes.size){
-          // Si on désactive tout, on réactive tout
-          document.querySelectorAll("#chipsTypes .chip").forEach(c => {
-            c.classList.add("active");
-            activeTypes.add(c.dataset.value);
-          });
-        }
+        // 👉 on active ce groupe normalement
+        setActiveGroupTab(group.label, { apply: true });
       }
-      applyFilters();
     });
 
-    el.appendChild(chip);
-    activeTypes.add(cat); // actives par défaut
+    mainBar.appendChild(btn);
   });
+
+  container.appendChild(mainBar);
+
+  // --- ligne pour les sous-catégories de la famille active ---
+  const subRow = document.createElement("div");
+  subRow.id = "chipsSubRow";
+  subRow.className = "chip-subrow";
+  container.appendChild(subRow);
+
+  // 🌟 ÉTAT INITIAL : aucun groupe sélectionné, pas de filtre de type
+  activeGroupLabel = null;
+  activeTypes.clear();
+  applyFilters();
 }
+
+
 
 
 function renderTable(filtered, qTokens) {
@@ -274,7 +426,7 @@ function renderTable(filtered, qTokens) {
 
     ac.innerHTML = `${territoryName}${inseeHtml}`;
 
-    tp.innerHTML = `<div class="type-pill" style="--pill-color:${r.__color}">${r.__cat}</div><div class="sub">${highlight(r.__sub || "", qTokens)}</div>`;
+    tp.innerHTML = `<div class="type-pill" style="--pill-color:${r.__color}">${highlight(r.__sub || "", qTokens)}</div>`;
     dt.innerHTML = highlight(r[CONFIG.COLS.Date], qTokens);
 
     tr.appendChild(ac); tr.appendChild(tp); tr.appendChild(dt);
@@ -289,7 +441,7 @@ function renderTable(filtered, qTokens) {
    Carte
 =========================== */
 function initMap() {
-  map = L.map("map", { zoomControl: false }).setView([46.71109, 1.7191036], 6);
+  map = L.map("map", { zoomControl: false }).setView([47.331144447240085, 5.091141071179042], 6);
 
   // Fond OSM France (comme avant)
   L.tileLayer("//{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png", {
@@ -527,9 +679,11 @@ function focusRowInTable(rowIndex) {
    Filtres & recherche
 =========================== */
 function matchesType(r) {
-  if (!activeTypes.size) return false;
+  // 👉 S'il n'y a AUCUN type actif, on ne filtre pas sur le type
+  if (!activeTypes.size) return true;
   return activeTypes.has(r.__cat);
 }
+
 
 function isRowInsideSelectedRegion(row){
   if (!selectedRegionLayer) return true;
@@ -575,7 +729,6 @@ function applyFilters() {
   // 3) Libellés & compteurs
   const scopeName = selectedRegionLayer?.feature?.properties?.nom || "France";
   $("#scopeLabel").textContent = scopeName;
-  $("#totalRefs").textContent = String(totalReferences);
   $("#visibleCount").textContent = String(resultRows.length);
 
   // 4) Rendus
@@ -676,7 +829,6 @@ async function init() {
 
   drawRegions(geojson);
   centers = centersData;
-  totalReferences = sheetRows.length;
 
   // Catégoriser & coloriser
   const categoriesSet = new Set();
@@ -718,15 +870,26 @@ if (floatBtn){
 }
 
   // Réinitialiser
-  $("#resetFilters").addEventListener("click", () => {
-    // Tout réactiver
-    $$("#chipsTypes .chip").forEach(ch => { ch.classList.add("active"); activeTypes.add(ch.dataset.value); });
-    // Recherche & région
-    $("#globalSearch").value = "";
-    searchQuery = "";
-    resetRegion();
-    applyFilters();
-  });
+$("#resetFilters").addEventListener("click", () => {
+  // 🔄 reset recherche & région
+  $("#globalSearch").value = "";
+  searchQuery = "";
+  resetRegion();
+
+  // ❌ aucun chip-main actif
+  activeGroupLabel = null;
+  activeTypes.clear();
+  $$("#chipsTypes .chip-main").forEach(btn => btn.classList.remove("active"));
+
+  const subRow = $("#chipsSubRow");
+  if (subRow) subRow.innerHTML = "";
+
+  // plus de filtre de type → on voit toutes les références
+  applyFilters();
+});
+
+
+
 
   // Recherche
   const onSearch = debounce(() => {
