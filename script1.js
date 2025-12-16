@@ -923,9 +923,9 @@ function getPanelOverlapWidthPx() {
 
 function fitMetroConsideringPanel(bounds) {
   const left = getPanelOverlapWidthPx();
-  map.fitBounds(bounds.pad(0.05), {
-    paddingTopLeft: [-left + 16, 16],     // réserve le panneau (+ petite marge)
-    paddingBottomRight: [16, 16],
+  map.fitBounds(bounds.pad(0), {
+    paddingTopLeft: [-left , 0],     // réserve le panneau (+ petite marge)
+    paddingBottomRight: [0, 0],
     animate: false
   });
 }
