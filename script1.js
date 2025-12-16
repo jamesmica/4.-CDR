@@ -6,6 +6,7 @@ const CONFIG = {
   csvPath: "centroides_total.csv",
   sheetGid: "0", 
   regionsPath: "regions-20180101.json",
+  worldPath: "world.geojson",
 
   // Colonnes (noms exacts de l'en-tête Google Sheets)
   COLS: {
@@ -33,6 +34,8 @@ let selectedRegionGeo = null;
 let selectedRegionBuffered = null;
 let activeGroupLabel = null;          // famille actuellement affichée
 let availableCatsByGroup = new Map(); // label -> sous-catégories présentes
+let lastResultRows = []; // dernières lignes réellement affichées (après filtres + recherche)
+let centerByINSEE = new Map();
 
 // Accès rapide markers/lignes
 const markerByRowIdx = new Map();     // rowIndex -> Leaflet marker
@@ -441,24 +444,38 @@ function renderTable(filtered, qTokens) {
    Carte
 =========================== */
 function initMap() {
-  map = L.map("map", { zoomControl: false }).setView([47.331144447240085, 5.091141071179042], 6);
+map = L.map("map", {
+  zoomControl: false,
+  worldCopyJump: false,
+  preferCanvas: true
+}).setView([46.6, 2.5], 6);
 
-  // Fond OSM France (comme avant)
-  L.tileLayer("//{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png", {
-    attribution: 'données © <a href="//osm.org/copyright">OpenStreetMap</a>/ODbL – rendu <a href="//openstreetmap.fr">OSM France</a>'
+
+  map.createPane("maskPane");
+  map.getPane("maskPane").style.zIndex = 380;
+
+  baseTiles = L.tileLayer("//{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png", {
+    attribution: 'données © <a href="//osm.org/copyright">OpenStreetMap</a>/ODbL – rendu <a href="//openstreetmap.fr">OSM France</a>',
+    noWrap: true,
+
+    // optionnel mais réduit les “flashs” au zoom :
+    updateWhenZooming: true,
+    updateWhenIdle: true,
+    keepBuffer: 4
   }).addTo(map);
 
   L.control.zoom({ position: "bottomleft" }).addTo(map);
 
   // Ajuster le rayon des markers au changement de zoom
-map.on('zoomend', () => {
+map.on("zoomend", () => {
   const base = markerRadius();
-  markerByRowIdx.forEach(m => {
-    const cls = m.options.className || '';
-    if (cls.includes('match')) {
+  const uniqueMarkers = new Set(markerByRowIdx.values());
+
+  uniqueMarkers.forEach(m => {
+    const cls = m.options.className || "";
+    if (cls.includes("match")) {
       m.setRadius(base + 2);
-    } else if (cls.includes('dim')) {
-      // même règle que rebuildMarkers (très petit)
+    } else if (cls.includes("dim")) {
       m.setRadius(Math.max(0.6, base * 0.25));
     } else {
       m.setRadius(base);
@@ -466,7 +483,80 @@ map.on('zoomend', () => {
   });
 });
 
+
 }
+
+function isMetroRegionFeature(f) {
+  const nom = normalize(f?.properties?.nom || "");
+  // Exclusions DROM (dans ton fichier, ce sont généralement ces noms)
+  return !/(guadeloupe|martinique|guyane|reunion|réunion|mayotte)/.test(nom);
+}
+
+function toMetroGeojson(regionsGeo) {
+  return {
+    ...regionsGeo,
+    features: (regionsGeo.features || []).filter(isMetroRegionFeature)
+  };
+}
+
+
+let maskLayer;
+
+function buildMaskFromRegions(regionsGeo) {
+  // Grand rectangle “monde”
+  const outer = [
+    [-90, -180],
+    [-90,  180],
+    [ 90,  180],
+    [ 90, -180],
+    [-90, -180]
+  ].map(([lat, lng]) => [lng, lat]); // GeoJSON = [lng, lat]
+
+  // Holes = contours extérieurs des régions (zones visibles)
+  const holes = [];
+
+  for (const f of regionsGeo.features || []) {
+    const g = f.geometry;
+    if (!g) continue;
+
+    if (g.type === "Polygon") {
+      // coords[0] = anneau extérieur
+      holes.push(g.coordinates[0]);
+    } else if (g.type === "MultiPolygon") {
+      for (const poly of g.coordinates) {
+        holes.push(poly[0]); // anneau extérieur
+      }
+    }
+  }
+
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: {
+      type: "Polygon",
+      coordinates: [outer, ...holes]
+    }
+  };
+}
+
+function drawMask(regionsGeo) {
+  const maskGeo = buildMaskFromRegions(regionsGeo);
+
+  if (maskLayer) maskLayer.remove();
+
+  maskLayer = L.geoJSON(maskGeo, {
+    pane: "maskPane",
+    interactive: false,
+    style: {
+      fillColor: "#ababab",     // masque blanc
+      fillOpacity: 0.72,
+      color: "#fff",
+      weight: 0,
+      fillRule: "evenodd"    // IMPORTANT: interprète les “trous”
+    }
+  }).addTo(map);
+}
+
 
 function drawRegions(geojson) {
   regionLayer = L.geoJSON(geojson, {
@@ -515,9 +605,9 @@ function resetRegion(){
 function getCentroidForRow(row) {
   const code = String(row[CONFIG.COLS.INSEE] || "").trim();
   if (!code) return null;
-  // UNIQUEMENT depuis le CSV chargé
-  return centers.find(x => x.INSEE === code) || null;
+  return centerByINSEE.get(code) || null;
 }
+
 
 /* ===========================
    Markers & interactions
@@ -725,6 +815,7 @@ function applyFilters() {
 
   // 2) Résultats = portée + recherche
   const resultRows = scopeRows.filter(r => matchesSearch(r, qTokens));
+  lastResultRows = resultRows;
 
   // 3) Libellés & compteurs
   const scopeName = selectedRegionLayer?.feature?.properties?.nom || "France";
@@ -814,6 +905,31 @@ function fetchCSV(path) {
   });
 }
 
+function getPanelOverlapWidthPx() {
+  const collapsed = document.body.classList.contains("panel-collapsed");
+  if (collapsed) return 0;
+
+  const panel = document.querySelector("#panel"); // <-- mets ici le bon sélecteur
+  const mapEl = document.getElementById("map");
+  if (!panel || !mapEl) return 0;
+
+  const p = panel.getBoundingClientRect();
+  const m = mapEl.getBoundingClientRect();
+
+  // largeur du panneau qui chevauche réellement la carte
+  const overlap = Math.max(0, Math.min(m.right, p.right) - Math.max(m.left, p.left));
+  return overlap;
+}
+
+function fitMetroConsideringPanel(bounds) {
+  const left = getPanelOverlapWidthPx();
+  map.fitBounds(bounds.pad(0.05), {
+    paddingTopLeft: [-left + 16, 16],     // réserve le panneau (+ petite marge)
+    paddingBottomRight: [16, 16],
+    animate: false
+  });
+}
+
 /* ===========================
    Bootstrap
 =========================== */
@@ -821,14 +937,30 @@ async function init() {
   $("#loader").classList.remove("hidden");
 
   initMap();
-  const [geojson, centersData, sheetRows] = await Promise.all([
-    fetch(CONFIG.regionsPath).then(r => r.json()),
-    fetchCSV(CONFIG.csvPath),
-    fetchSheet()
-  ]);
+const [regionsGeoAll, centersData, sheetRows] = await Promise.all([
+  fetch(CONFIG.regionsPath).then(r => r.json()),
+  fetchCSV(CONFIG.csvPath),
+  fetchSheet()
+]);
 
-  drawRegions(geojson);
-  centers = centersData;
+const regionsGeo = regionsGeoAll;
+const regionsGeoFr = toMetroGeojson(regionsGeoAll);
+
+
+drawMask(regionsGeo);
+drawRegions(regionsGeo);
+centers = centersData;
+centerByINSEE = new Map(centers.map(c => [c.INSEE, c]));
+
+const metroBounds = L.geoJSON(regionsGeoFr).getBounds();
+
+requestAnimationFrame(() => {
+  map.invalidateSize(true);
+  fitMetroConsideringPanel(metroBounds);
+});
+
+
+
 
   // Catégoriser & coloriser
   const categoriesSet = new Set();
@@ -888,6 +1020,10 @@ $("#resetFilters").addEventListener("click", () => {
   applyFilters();
 });
 
+const exportBtn = document.getElementById("exportExcel");
+if (exportBtn) {
+  exportBtn.addEventListener("click", exportFilteredToExcel);
+}
 
 
 
@@ -908,5 +1044,80 @@ function escapeHtml(s) {
     .replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
+
+function filenameSafe(str) {
+  return normalize(str)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120); // évite les noms trop longs
+}
+
+function getExportContextLabel() {
+  const parts = [];
+
+  const region = selectedRegionLayer?.feature?.properties?.nom || "France";
+  parts.push(`${region}`);
+
+  if (activeTypes && activeTypes.size) {
+    parts.push(`${Array.from(activeTypes).join("+")}`);
+  } else if (activeGroupLabel) {
+    parts.push(`${activeGroupLabel}`);
+  } else {
+    parts.push("");
+  }
+
+  if (searchQuery && searchQuery.trim()) {
+    parts.push(`${searchQuery.trim()}`);
+  } else {
+    parts.push("");
+  }
+
+  return filenameSafe(parts.join("__"));
+}
+
+function exportFilteredToExcel() {
+  if (!window.XLSX) {
+    alert("Librairie XLSX non chargée (SheetJS).");
+    return;
+  }
+
+  const data = (lastResultRows || []).map(r => ({
+    "Territoire": r[CONFIG.COLS.AssociatedCompany] || "",
+    "INSEE/EPCI": r[CONFIG.COLS.EPCICOM] || r[CONFIG.COLS.INSEE] || "",
+    "Catégorie": r.__cat || "",
+    "Type (détail)": r.__sub || "",
+    "Date": r[CONFIG.COLS.Date] || "",
+    "Région (colonne)": r[CONFIG.COLS.Region] || "",
+    "Type brut": r[CONFIG.COLS.Type] || "",
+    "NomType brut": r[CONFIG.COLS.NomType] || ""
+  }));
+
+  // Horodatage (local) : AAAA-MM-JJ_HHMM
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+
+  const ctx = getExportContextLabel();
+  const filename = `references_${stamp}__${ctx}.xlsx`;
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(data);
+
+  // (optionnel) un peu de confort : largeur de colonnes
+  ws["!cols"] = [
+    { wch: 34 }, // Territoire
+    { wch: 14 }, // INSEE/EPCI
+    { wch: 26 }, // Catégorie
+    { wch: 40 }, // Type détail
+    { wch: 10 }, // Date
+    { wch: 18 }, // Région
+    { wch: 22 }, // Type brut
+    { wch: 22 }  // NomType brut
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, "Références");
+  XLSX.writeFile(wb, filename);
+}
+
 
 document.addEventListener("DOMContentLoaded", init);
