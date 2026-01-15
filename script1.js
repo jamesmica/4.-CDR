@@ -4,7 +4,7 @@
 const CONFIG = {
   sheetId: "1FUhix1FToy_joK8lZuiZvZp6aCeQncByDaFVfPGKU1k", // <-- remplace si besoin
   csvPath: "centroides_total.csv",
-  sheetGid: "0", 
+  sheetGid: "1666087270", 
   regionsPath: "regions-20180101.json",
   worldPath: "world.geojson",
 
@@ -98,7 +98,7 @@ const COLORS = {
   "ABS": "#EE2528",
   "CTG": "#5C368D",
   "Autres Études / Stratégies": "#95235B",
-  "Fiche QPV": "#F9B832",
+  "Profil QPV": "#F9B832",
   "Projection effectifs scolaires": "#F9B832",
   "Diagnostic petite enfance/SPPE": "#F38331",
   "Non précisé": "#7F8C8D"
@@ -112,7 +112,7 @@ const CHIPS_ORDER = [
   "Projection effectifs scolaires",
   "Diagnostic petite enfance/SPPE",
   "Autres Études / Stratégies",
-  "Fiche QPV"
+  "Profil QPV"
 ];
 
 const CHIP_GROUPS = [
@@ -121,7 +121,7 @@ const CHIP_GROUPS = [
     cats: [
       "Achat unique - Profils Thématiques",
       "Abonnement - Profils Thématiques",
-      "Fiche QPV"
+      "Profil QPV"
     ]
   },
   {
@@ -171,14 +171,14 @@ function categorize(typeRaw, nomTypeRaw) {
       color: COLORS["Achat unique - Profils Thématiques"]
     };
   }
-  // Profils thématiques génériques -> ranger avec "Achat unique - Profils Thématiques"
-  if (/profil/.test(t) || /profil/.test(n)) {
-    return {
-      cat: "Achat unique - Profils Thématiques",
-      sub: subFromProfiles(typeRaw, nomTypeRaw),
-      color: COLORS["Achat unique - Profils Thématiques"]
-    };
-  }
+  // // Profils thématiques génériques -> ranger avec "Achat unique - Profils Thématiques"
+  // if (/profil/.test(t) || /profil/.test(n)) {
+  //   return {
+  //     cat: "Achat unique - Profils Thématiques",
+  //     sub: subFromProfiles(typeRaw, nomTypeRaw),
+  //     color: COLORS["Achat unique - Profils Thématiques"]
+  //   };
+  // }
 
     if (/budget\s*croise/.test(combined)) { // "croisé" devient "croise" après normalize()
     return {
@@ -207,11 +207,11 @@ function categorize(typeRaw, nomTypeRaw) {
   }
 
   // Outils
-  if (/fich(e|es)\s*QPV/.test(t) || /fich(e|es)\s*qpv/.test(n)) {
+  if (/profil\s*QPV/.test(t) || /Profil\s*QPV/.test(n)) {
     return {
-      cat: "Fiche QPV",
+      cat: "Profil QPV",
       sub: friendlyTitle(nomTypeRaw || typeRaw),
-      color: COLORS["Fiche QPV"]
+      color: COLORS["Profil QPV"]
     };
   }
 
@@ -247,7 +247,6 @@ function subFromProfiles(typeRaw, nomTypeRaw) {
     ["Sports", /\bsports?\b/],
     ["Économie-emploi", /(economie.?emploi|économie.?emploi)/],
     ["Vie locale", /(vie\s*locale)/],
-    ["Quartier/QPV", /(quartier|qpv)/],
     ["Revenus-précarité", /(revenus|precarit(e|é))/],
   ];
 
